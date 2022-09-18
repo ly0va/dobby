@@ -10,46 +10,62 @@ pub struct Table {
     pub file: std::fs::File,
 }
 
+struct Row {
+    row: HashMap<String, Bytes>,
+    offset: u64,
+}
+
 impl Table {
-    fn next_row(&mut self) -> Option<Result<HashMap<String, Bytes>, io::Error>> {
+    fn next_row(&mut self) -> Option<Result<Row, io::Error>> {
         let mut row = HashMap::new();
-        // TODO: deal with deleted rows
         let mut deleted = [0];
-        self.file.read_exact(&mut deleted).ok()?;
-        for (column, data_type) in &self.columns {
-            let mut buffer;
-            let result = match data_type {
-                DataType::Int | DataType::Float => {
-                    buffer = vec![0; 8];
-                    self.file.read_exact(&mut buffer)
-                }
-                DataType::Char => {
-                    buffer = vec![0; 1];
-                    self.file.read_exact(&mut buffer)
-                }
-                DataType::Str => {
-                    let mut length = [0; 8];
-                    match self.file.read_exact(&mut length) {
-                        Ok(_) => {
-                            let length = u64::from_le_bytes(length);
-                            buffer = vec![0; length as usize];
-                            self.file.read_exact(&mut buffer)
-                        }
-                        Err(e) => return Some(Err(e)),
+        let mut offset;
+        loop {
+            offset = self.file.seek(SeekFrom::Current(0)).unwrap();
+            self.file.read_exact(&mut deleted).ok()?;
+
+            for (column, data_type) in &self.columns {
+                let mut buffer;
+                let result = match data_type {
+                    DataType::Int | DataType::Float => {
+                        buffer = vec![0; 8];
+                        self.file.read_exact(&mut buffer)
                     }
-                }
-            };
-            match result {
-                Ok(_) => row.insert(column.clone(), buffer),
-                Err(e) => return Some(Err(e)),
-            };
+                    DataType::Char => {
+                        buffer = vec![0; 1];
+                        self.file.read_exact(&mut buffer)
+                    }
+                    DataType::Str => {
+                        let mut length = [0; 8];
+                        match self.file.read_exact(&mut length) {
+                            Ok(_) => {
+                                let length = u64::from_le_bytes(length);
+                                buffer = vec![0; length as usize];
+                                self.file.read_exact(&mut buffer)
+                            }
+                            Err(e) => return Some(Err(e)),
+                        }
+                    }
+                };
+                match result {
+                    Ok(_) => row.insert(column.clone(), buffer),
+                    Err(e) => return Some(Err(e)),
+                };
+            }
+
+            if deleted[0] == 0 {
+                break;
+            }
         }
 
-        Some(Ok(row))
+        Some(Ok(Row { offset, row }))
     }
 
-    fn mark_deleted(&mut self) -> Result<(), io::Error> {
-        self.file.write_all(&[1])
+    fn delete_at(&mut self, offset: u64) -> Result<(), io::Error> {
+        self.file.seek(SeekFrom::Start(offset))?;
+        self.file.write_all(&[1])?;
+        self.file.seek(SeekFrom::Current(-1))?;
+        Ok(())
     }
 }
 
@@ -93,8 +109,11 @@ impl Table {
         conditions: HashMap<String, Bytes>,
     ) -> Result<Vec<HashMap<String, Bytes>>, DbError> {
         let mut result = Vec::new();
+        self.file
+            .seek(SeekFrom::Start(0))
+            .map_err(DbError::IoError)?;
         'outer: while let Some(row) = self.next_row() {
-            let mut row = row.map_err(DbError::IoError)?;
+            let Row { mut row, .. } = row.map_err(DbError::IoError)?;
             for (column, value) in &conditions {
                 if let Some(row_value) = row.get(column) {
                     if row_value != value {
@@ -123,10 +142,14 @@ impl Table {
         conditions: HashMap<String, Bytes>,
     ) -> Result<(), DbError> {
         'outer: while let Some(row) = self.next_row() {
-            let mut row = row.map_err(DbError::IoError)?;
+            let Row { offset, mut row } = row.map_err(DbError::IoError)?;
             for (column, value) in &conditions {
-                if row.get(column) != Some(value) {
-                    continue 'outer;
+                if let Some(row_value) = row.get(column) {
+                    if row_value != value {
+                        continue 'outer;
+                    }
+                } else {
+                    return Err(DbError::ColumnNotFound(column.clone()));
                 }
             }
             for (column, value) in &set {
@@ -135,24 +158,25 @@ impl Table {
                 }
                 row.insert(column.clone(), value.clone());
             }
-            // TODO: rewind to the start here
-            self.mark_deleted().map_err(DbError::IoError)?;
             self.insert(row)?;
-            // TODO: seek to prev position
+            self.delete_at(offset).map_err(DbError::IoError)?;
         }
         Ok(())
     }
 
     pub fn delete(&mut self, conditions: HashMap<String, Bytes>) -> Result<(), DbError> {
         'outer: while let Some(row) = self.next_row() {
-            let row = row.map_err(DbError::IoError)?;
+            let Row { offset, row } = row.map_err(DbError::IoError)?;
             for (column, value) in &conditions {
-                if row.get(column) != Some(value) {
-                    continue 'outer;
+                if let Some(row_value) = row.get(column) {
+                    if row_value != value {
+                        continue 'outer;
+                    }
+                } else {
+                    return Err(DbError::ColumnNotFound(column.clone()));
                 }
             }
-            // TODO: rewind
-            self.mark_deleted().map_err(DbError::IoError)?;
+            self.delete_at(offset).map_err(DbError::IoError)?;
         }
         Ok(())
     }
