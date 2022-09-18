@@ -1,6 +1,7 @@
 use super::types::DataType;
 use super::types::DbError;
 use std::collections::{hash_map::Entry, HashMap};
+use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::path::Path;
 
@@ -19,16 +20,15 @@ impl Schema {
     }
 
     pub fn load(path: &Path) -> Result<Schema, io::Error> {
-        let file = std::fs::File::open(path.join("schema"))?;
+        let file = File::open(path.join("schema")).expect("Schema file not found");
         let mut reader = io::BufReader::new(file).lines();
         let mut tables = HashMap::new();
-        let name = reader.next().unwrap()?;
+        let name = reader.next().expect("Schema file is empty")?;
         for line in reader {
             let line = line?;
-            // TODO: replace unwraps with io errors
-            let (table, columns) = line.split_once("::").unwrap();
+            let (table, columns) = line.split_once('#').expect("Schema file corrupted");
             for column in columns.split(',') {
-                let (column, data_type) = column.split_once(':').unwrap();
+                let (column, data_type) = column.split_once(':').expect("Schema file corrupted");
                 tables
                     .entry(table.to_string())
                     .or_insert_with(Vec::new)
@@ -38,8 +38,9 @@ impl Schema {
         Ok(Schema { tables, name })
     }
 
+    // TODO: dump the schema at some point
     pub fn dump(&self, path: &Path) -> Result<(), io::Error> {
-        let mut file = std::fs::File::create(path.join(".schema"))?;
+        let mut file = File::create(path.join(".schema"))?;
         file.write_all(self.name.as_bytes())?;
         file.write_all(b"\n")?;
         for (table, columns) in &self.tables {
@@ -48,7 +49,7 @@ impl Schema {
                 .map(|(column, data_type)| format!("{}:{:?},", column, data_type))
                 .collect();
             table_schema.pop();
-            file.write_all(format!("{}::{}\n", table, table_schema).as_bytes())?;
+            file.write_all(format!("{}#{}\n", table, table_schema).as_bytes())?;
         }
         Ok(())
     }
@@ -58,7 +59,11 @@ impl Schema {
         name: String,
         columns: Vec<(String, DataType)>,
     ) -> Result<(), DbError> {
+        Self::validate_name(&name)?;
         if let Entry::Vacant(entry) = self.tables.entry(name.clone()) {
+            columns
+                .iter()
+                .try_for_each(|(name, _)| Self::validate_name(name))?;
             entry.insert(columns);
             Ok(())
         } else {
@@ -87,21 +92,23 @@ impl Schema {
                 if let Some(index) = entry.get().iter().position(|(n, _)| n == &name) {
                     entry.get_mut().remove(index);
                 } else {
-                    return Err(DbError::ColumnNotFound(name));
+                    return Err(DbError::ColumnNotFound(name, table));
                 }
             }
 
             if let Some((old_name, new_name)) = rename {
+                Self::validate_name(&new_name)?;
                 if let Some(column) = entry.get_mut().iter_mut().find(|(n, _)| n == &old_name) {
                     column.0 = new_name;
                 } else {
-                    return Err(DbError::ColumnNotFound(old_name));
+                    return Err(DbError::ColumnNotFound(old_name, table));
                 }
             }
 
             if let Some((name, data_type)) = add {
+                Self::validate_name(&name)?;
                 if entry.get().iter().any(|(n, _)| n == &name) {
-                    return Err(DbError::ColumnAlreadyExists(name));
+                    return Err(DbError::ColumnAlreadyExists(name, table));
                 } else {
                     entry.get_mut().push((name, data_type));
                 }
@@ -110,6 +117,14 @@ impl Schema {
             Ok(())
         } else {
             Err(DbError::TableNotFound(table))
+        }
+    }
+
+    pub fn validate_name(name: &str) -> Result<(), DbError> {
+        if name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            Ok(())
+        } else {
+            Err(DbError::InvalidName(name.to_string()))
         }
     }
 }

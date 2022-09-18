@@ -1,20 +1,32 @@
 use std::collections::HashMap;
 use std::fmt;
+use thiserror::Error;
 
 pub type Bytes = Vec<u8>;
 
-// TODO: add thiserror
+#[derive(Debug, Error)]
 pub enum DbError {
+    #[error("Table {0} already exists")]
     TableAlreadyExists(String),
+    #[error("Table {0} not found")]
     TableNotFound(String),
-    ColumnNotFound(String),
-    ColumnAlreadyExists(String),
+    #[error("Column {0} already exists in table {1}")]
+    ColumnAlreadyExists(String, String),
+    #[error("Column {0} not found in table {1}")]
+    ColumnNotFound(String, String),
+    #[error("Invalid datatype {0} in found in schema")]
     InvalidDataType(String),
-    InvalidValue(String),
+    #[error("Name {0} cannot be used for a table or a column")]
+    InvalidName(String),
+    #[error("Invalid value {0} for datatype {1:?}")]
+    InvalidValue(String, DataType),
+    #[error("Invalid query {0}")]
     InvalidQuery(String),
-    IoError(std::io::Error),
+    #[error("IO Error")]
+    IoError(#[from] std::io::Error),
 }
 
+#[derive(Debug, Clone)]
 pub enum Query {
     Select {
         from: String,
@@ -49,7 +61,7 @@ pub enum Query {
     },
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum DataType {
     Int,
     Float,

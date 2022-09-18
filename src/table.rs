@@ -1,15 +1,18 @@
 use std::collections::HashMap;
+use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use super::types::{Bytes, DataType, DbError};
 
+#[derive(Debug)]
 pub struct Table {
     pub name: String,
     pub columns: Vec<(String, DataType)>,
-    pub file: std::fs::File,
+    pub file: File,
 }
 
+#[derive(Debug, Clone)]
 struct Row {
     row: HashMap<String, Bytes>,
     offset: u64,
@@ -71,7 +74,7 @@ impl Table {
 
 impl Table {
     pub fn open(name: String, columns: Vec<(String, DataType)>, path: &Path) -> Self {
-        let file = std::fs::OpenOptions::new()
+        let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
@@ -89,12 +92,9 @@ impl Table {
         for (name, data_type) in &self.columns {
             let value = values
                 .get(name)
-                .ok_or_else(|| DbError::ColumnNotFound(name.clone()))?;
+                .ok_or_else(|| DbError::ColumnNotFound(name.clone(), self.name.clone()))?;
             if !data_type.valid(value) {
-                return Err(DbError::InvalidValue(format!(
-                    "Invalid value for column {}: {:?}",
-                    name, value
-                )));
+                return Err(DbError::InvalidValue(name.clone(), *data_type));
             }
             row.extend_from_slice(value);
         }
@@ -120,15 +120,16 @@ impl Table {
                         continue 'outer;
                     }
                 } else {
-                    return Err(DbError::ColumnNotFound(column.clone()));
+                    return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
             }
             let mut selected = HashMap::new();
             for column in &columns {
                 selected.insert(
                     column.clone(),
-                    row.remove(column)
-                        .ok_or_else(|| DbError::ColumnNotFound(column.clone()))?,
+                    row.remove(column).ok_or_else(|| {
+                        DbError::ColumnNotFound(column.clone(), self.name.clone())
+                    })?,
                 );
             }
             result.push(selected);
@@ -141,6 +142,9 @@ impl Table {
         set: HashMap<String, Bytes>,
         conditions: HashMap<String, Bytes>,
     ) -> Result<(), DbError> {
+        self.file
+            .seek(SeekFrom::Start(0))
+            .map_err(DbError::IoError)?;
         'outer: while let Some(row) = self.next_row() {
             let Row { offset, mut row } = row.map_err(DbError::IoError)?;
             for (column, value) in &conditions {
@@ -149,12 +153,12 @@ impl Table {
                         continue 'outer;
                     }
                 } else {
-                    return Err(DbError::ColumnNotFound(column.clone()));
+                    return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
             }
             for (column, value) in &set {
                 if !row.contains_key(column) {
-                    return Err(DbError::ColumnNotFound(column.clone()));
+                    return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
                 row.insert(column.clone(), value.clone());
             }
@@ -165,6 +169,9 @@ impl Table {
     }
 
     pub fn delete(&mut self, conditions: HashMap<String, Bytes>) -> Result<(), DbError> {
+        self.file
+            .seek(SeekFrom::Start(0))
+            .map_err(DbError::IoError)?;
         'outer: while let Some(row) = self.next_row() {
             let Row { offset, row } = row.map_err(DbError::IoError)?;
             for (column, value) in &conditions {
@@ -173,7 +180,7 @@ impl Table {
                         continue 'outer;
                     }
                 } else {
-                    return Err(DbError::ColumnNotFound(column.clone()));
+                    return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
             }
             self.delete_at(offset).map_err(DbError::IoError)?;

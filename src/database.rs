@@ -5,6 +5,7 @@ use super::types::{DbError, Query};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+#[derive(Debug)]
 pub struct Database {
     pub tables: HashMap<String, Table>,
     pub path: PathBuf,
@@ -30,40 +31,41 @@ impl Database {
         }
     }
 
-    pub fn table(&mut self, name: &str) -> &mut Table {
+    pub fn table(&mut self, name: &str) -> Result<&mut Table, DbError> {
         if !self.tables.contains_key(name) {
+            if !self.schema.tables.contains_key(name) {
+                return Err(DbError::TableNotFound(name.to_string()));
+            }
             let columns = self.schema.tables[name].clone();
             let table = Table::open(name.to_string(), columns, &self.path);
             self.tables.insert(name.to_string(), table);
         }
 
-        self.tables.get_mut(name).unwrap()
+        Ok(self.tables.get_mut(name).unwrap())
     }
 
     pub fn execute(&mut self, query: Query) -> Result<(), DbError> {
         match query {
-            // TODO: validate table & column names
             Query::Select {
                 from,
                 columns,
                 conditions,
             } => {
-                self.table(&from).select(columns, conditions)?;
+                self.table(&from)?.select(columns, conditions)?;
             }
             Query::Insert { into, values } => {
-                self.table(&into).insert(values)?;
+                self.table(&into)?.insert(values)?;
             }
             Query::Update {
                 table,
                 set,
                 conditions,
             } => {
-                self.table(&table).update(set, conditions)?;
+                self.table(&table)?.update(set, conditions)?;
             }
             Query::Delete { from, conditions } => {
-                self.table(&from).delete(conditions)?;
+                self.table(&from)?.delete(conditions)?;
             }
-            // TODO: validate table & column names
             Query::Create { table, columns } => {
                 self.schema.create_table(table, columns)?;
             }
