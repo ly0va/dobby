@@ -1,6 +1,6 @@
 use super::schema::Schema;
 use super::table::Table;
-use super::types::{Bytes, DbError, Query};
+use super::types::{DbError, FieldSet, Query};
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -48,10 +48,7 @@ impl Database {
         Ok(self.tables.get_mut(name).unwrap())
     }
 
-    pub fn execute(
-        &mut self,
-        query: Query,
-    ) -> Result<Option<Vec<HashMap<String, Bytes>>>, DbError> {
+    pub fn execute(&mut self, query: Query) -> Result<Option<Vec<FieldSet>>, DbError> {
         match query {
             Query::Select {
                 from,
@@ -79,13 +76,8 @@ impl Database {
             Query::Drop { table } => {
                 self.schema.drop_table(table)?;
             }
-            Query::Alter {
-                table,
-                add,
-                drop,
-                rename,
-            } => {
-                self.schema.alter_table(table, add, drop, rename)?;
+            Query::Alter { table, rename, .. } => {
+                self.schema.alter_table(table, rename)?;
             }
         }
         Ok(None)

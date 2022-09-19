@@ -1,5 +1,6 @@
-use dobby::database::Database;
-use dobby::types::Query;
+mod core;
+
+use crate::core::{types::Query, Database};
 use std::collections::HashMap;
 
 fn main() {
@@ -7,17 +8,17 @@ fn main() {
     db.execute(Query::Insert {
         into: "test".into(),
         values: HashMap::from([
-            ("id".into(), 1u64.to_le_bytes().to_vec()),
+            ("id".into(), 2i64.into()),
             ("name".into(), "test-name".into()),
         ]),
     })
     .unwrap();
-    db.execute(Query::Update {
-        table: "test".into(),
-        set: HashMap::from([("name".into(), "updated-name".into())]),
-        conditions: HashMap::from([("id".into(), 1u64.to_le_bytes().to_vec())]),
-    })
-    .unwrap();
+    // db.execute(Query::Update {
+    //     table: "test".into(),
+    //     set: HashMap::from([("name".into(), "updated-name".into())]),
+    //     conditions: HashMap::from([("id".into(), 1i64.into())]),
+    // })
+    // .unwrap();
 
     let result = db
         .execute(Query::Select {

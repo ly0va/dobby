@@ -80,41 +80,16 @@ impl Schema {
         }
     }
 
-    pub fn alter_table(
-        &mut self,
-        table: String,
-        add: Option<(String, DataType)>,
-        drop: Option<String>,
-        rename: Option<(String, String)>,
-    ) -> Result<(), DbError> {
+    pub fn alter_table(&mut self, table: String, rename: (String, String)) -> Result<(), DbError> {
         if let Entry::Occupied(mut entry) = self.tables.entry(table.clone()) {
-            if let Some(name) = drop {
-                if let Some(index) = entry.get().iter().position(|(n, _)| n == &name) {
-                    entry.get_mut().remove(index);
-                } else {
-                    return Err(DbError::ColumnNotFound(name, table));
-                }
+            let (old_name, new_name) = rename;
+            Self::validate_name(&new_name)?;
+            if let Some(column) = entry.get_mut().iter_mut().find(|(n, _)| n == &old_name) {
+                column.0 = new_name;
+                Ok(())
+            } else {
+                Err(DbError::ColumnNotFound(old_name, table))
             }
-
-            if let Some((old_name, new_name)) = rename {
-                Self::validate_name(&new_name)?;
-                if let Some(column) = entry.get_mut().iter_mut().find(|(n, _)| n == &old_name) {
-                    column.0 = new_name;
-                } else {
-                    return Err(DbError::ColumnNotFound(old_name, table));
-                }
-            }
-
-            if let Some((name, data_type)) = add {
-                Self::validate_name(&name)?;
-                if entry.get().iter().any(|(n, _)| n == &name) {
-                    return Err(DbError::ColumnAlreadyExists(name, table));
-                } else {
-                    entry.get_mut().push((name, data_type));
-                }
-            }
-
-            Ok(())
         } else {
             Err(DbError::TableNotFound(table))
         }

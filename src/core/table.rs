@@ -3,7 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
-use super::types::{Bytes, DataType, DbError};
+use super::types::{DataType, DbError, FieldSet, TypedValue};
 
 #[derive(Debug)]
 pub struct Table {
@@ -14,7 +14,7 @@ pub struct Table {
 
 #[derive(Debug, Clone)]
 struct Row {
-    row: HashMap<String, Bytes>,
+    row: FieldSet,
     offset: u64,
 }
 
@@ -28,30 +28,9 @@ impl Table {
             self.file.read_exact(&mut deleted).ok()?;
 
             for (column, data_type) in &self.columns {
-                let mut buffer;
-                let result = match data_type {
-                    DataType::Int | DataType::Float => {
-                        buffer = vec![0; 8];
-                        self.file.read_exact(&mut buffer)
-                    }
-                    DataType::Char => {
-                        buffer = vec![0; 1];
-                        self.file.read_exact(&mut buffer)
-                    }
-                    DataType::Str => {
-                        let mut length = [0; 8];
-                        match self.file.read_exact(&mut length) {
-                            Ok(_) => {
-                                let length = u64::from_le_bytes(length);
-                                buffer = vec![0; length as usize];
-                                self.file.read_exact(&mut buffer)
-                            }
-                            Err(e) => return Some(Err(e)),
-                        }
-                    }
-                };
-                match result {
-                    Ok(_) => row.insert(column.clone(), buffer),
+                let value = TypedValue::read(*data_type, &mut self.file);
+                match value {
+                    Ok(value) => row.insert(column.clone(), value),
                     Err(e) => return Some(Err(e)),
                 };
             }
@@ -70,9 +49,7 @@ impl Table {
         self.file.seek(SeekFrom::Current(-1))?;
         Ok(())
     }
-}
 
-impl Table {
     pub fn open(name: String, columns: Vec<(String, DataType)>, path: &Path) -> Self {
         let file = OpenOptions::new()
             .read(true)
@@ -87,20 +64,16 @@ impl Table {
         }
     }
 
-    pub fn insert(&mut self, values: HashMap<String, Bytes>) -> Result<(), DbError> {
+    pub fn insert(&mut self, values: HashMap<String, TypedValue>) -> Result<(), DbError> {
         let mut row = vec![0]; // 0 - "not deleted"
         for (name, data_type) in &self.columns {
             let value = values
                 .get(name)
-                .ok_or_else(|| DbError::ColumnNotFound(name.clone(), self.name.clone()))?;
-            if !data_type.valid(value) {
-                return Err(DbError::InvalidValue(name.clone(), *data_type));
+                .ok_or_else(|| DbError::IncompleteData(name.clone(), self.name.clone()))?;
+            if value.data_type() != *data_type {
+                return Err(DbError::InvalidValue(value.clone(), *data_type));
             }
-            if data_type == &DataType::Str {
-                let length = value.len() as u64;
-                row.extend_from_slice(&length.to_le_bytes());
-            }
-            row.extend_from_slice(value);
+            row.extend_from_slice(&value.clone().into_bytes());
         }
 
         self.file.seek(SeekFrom::End(0)).map_err(DbError::IoError)?;
@@ -110,8 +83,8 @@ impl Table {
     pub fn select(
         &mut self,
         columns: Vec<String>,
-        conditions: HashMap<String, Bytes>,
-    ) -> Result<Vec<HashMap<String, Bytes>>, DbError> {
+        conditions: FieldSet,
+    ) -> Result<Vec<FieldSet>, DbError> {
         let mut result = Vec::new();
         self.file
             .seek(SeekFrom::Start(0))
@@ -141,11 +114,7 @@ impl Table {
         Ok(result)
     }
 
-    pub fn update(
-        &mut self,
-        set: HashMap<String, Bytes>,
-        conditions: HashMap<String, Bytes>,
-    ) -> Result<(), DbError> {
+    pub fn update(&mut self, set: FieldSet, conditions: FieldSet) -> Result<(), DbError> {
         let eof = self.file.seek(SeekFrom::End(0)).map_err(DbError::IoError)?;
         self.file
             .seek(SeekFrom::Start(0))
@@ -180,7 +149,7 @@ impl Table {
         Ok(())
     }
 
-    pub fn delete(&mut self, conditions: HashMap<String, Bytes>) -> Result<(), DbError> {
+    pub fn delete(&mut self, conditions: FieldSet) -> Result<(), DbError> {
         self.file
             .seek(SeekFrom::Start(0))
             .map_err(DbError::IoError)?;
