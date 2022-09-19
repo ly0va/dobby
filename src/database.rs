@@ -1,6 +1,6 @@
 use super::schema::Schema;
 use super::table::Table;
-use super::types::{DbError, Query};
+use super::types::{Bytes, DbError, Query};
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -14,7 +14,7 @@ pub struct Database {
 
 impl Database {
     pub fn open(path: PathBuf) -> Self {
-        let schema = Schema::load(&path).expect("Failed to load schema");
+        let schema = Schema::load(&path).expect("Failed to load database schema");
         Database {
             tables: HashMap::new(),
             path,
@@ -23,6 +23,10 @@ impl Database {
     }
 
     pub fn create(path: PathBuf, name: String) -> Self {
+        if path.exists() {
+            panic!("Path {} already occupied", path.display());
+        }
+        std::fs::create_dir_all(&path).expect("Failed to create database directory");
         let schema = Schema::new(name);
         Database {
             tables: HashMap::new(),
@@ -44,14 +48,17 @@ impl Database {
         Ok(self.tables.get_mut(name).unwrap())
     }
 
-    pub fn execute(&mut self, query: Query) -> Result<(), DbError> {
+    pub fn execute(
+        &mut self,
+        query: Query,
+    ) -> Result<Option<Vec<HashMap<String, Bytes>>>, DbError> {
         match query {
             Query::Select {
                 from,
                 columns,
                 conditions,
             } => {
-                self.table(&from)?.select(columns, conditions)?;
+                return Ok(Some(self.table(&from)?.select(columns, conditions)?));
             }
             Query::Insert { into, values } => {
                 self.table(&into)?.insert(values)?;
@@ -81,6 +88,14 @@ impl Database {
                 self.schema.alter_table(table, add, drop, rename)?;
             }
         }
-        Ok(())
+        Ok(None)
+    }
+}
+
+impl Drop for Database {
+    fn drop(&mut self) {
+        self.schema
+            .dump(&self.path)
+            .expect("Failed to save database schema");
     }
 }

@@ -8,20 +8,28 @@ pub type Bytes = Vec<u8>;
 pub enum DbError {
     #[error("Table {0} already exists")]
     TableAlreadyExists(String),
+
     #[error("Table {0} not found")]
     TableNotFound(String),
+
     #[error("Column {0} already exists in table {1}")]
     ColumnAlreadyExists(String, String),
+
     #[error("Column {0} not found in table {1}")]
     ColumnNotFound(String, String),
+
     #[error("Invalid datatype {0} in found in schema")]
     InvalidDataType(String),
+
     #[error("Name {0} cannot be used for a table or a column")]
     InvalidName(String),
+
     #[error("Invalid value {0} for datatype {1:?}")]
     InvalidValue(String, DataType),
+
     #[error("Invalid query {0}")]
     InvalidQuery(String),
+
     #[error("IO Error")]
     IoError(#[from] std::io::Error),
 }
@@ -75,7 +83,7 @@ impl fmt::Debug for DataType {
             DataType::Int => write!(f, "int"),
             DataType::Float => write!(f, "float"),
             DataType::Char => write!(f, "char"),
-            DataType::Str => write!(f, "str"),
+            DataType::Str => write!(f, "string"),
         }
     }
 }
@@ -86,7 +94,7 @@ impl From<&str> for DataType {
             "int" => DataType::Int,
             "float" => DataType::Float,
             "char" => DataType::Char,
-            "str" => DataType::Str,
+            "string" => DataType::Str,
             _ => panic!("Unknown data type: {}", s),
         }
     }
@@ -98,13 +106,7 @@ impl DataType {
             DataType::Int => bytes.len() == 8,
             DataType::Float => bytes.len() == 8,
             DataType::Char => bytes.len() == 1,
-            DataType::Str => {
-                if bytes.len() < 8 {
-                    return false;
-                }
-                let len = u64::from_le_bytes(bytes[..8].try_into().unwrap());
-                bytes.len() == 8 + len as usize
-            }
+            DataType::Str => String::from_utf8(bytes.to_vec()).is_ok(),
         }
     }
 }

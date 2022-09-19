@@ -88,13 +88,17 @@ impl Table {
     }
 
     pub fn insert(&mut self, values: HashMap<String, Bytes>) -> Result<(), DbError> {
-        let mut row = Vec::new();
+        let mut row = vec![0]; // 0 - "not deleted"
         for (name, data_type) in &self.columns {
             let value = values
                 .get(name)
                 .ok_or_else(|| DbError::ColumnNotFound(name.clone(), self.name.clone()))?;
             if !data_type.valid(value) {
                 return Err(DbError::InvalidValue(name.clone(), *data_type));
+            }
+            if data_type == &DataType::Str {
+                let length = value.len() as u64;
+                row.extend_from_slice(&length.to_le_bytes());
             }
             row.extend_from_slice(value);
         }
@@ -142,11 +146,15 @@ impl Table {
         set: HashMap<String, Bytes>,
         conditions: HashMap<String, Bytes>,
     ) -> Result<(), DbError> {
+        let eof = self.file.seek(SeekFrom::End(0)).map_err(DbError::IoError)?;
         self.file
             .seek(SeekFrom::Start(0))
             .map_err(DbError::IoError)?;
         'outer: while let Some(row) = self.next_row() {
             let Row { offset, mut row } = row.map_err(DbError::IoError)?;
+            if offset == eof {
+                break;
+            }
             for (column, value) in &conditions {
                 if let Some(row_value) = row.get(column) {
                     if row_value != value {
@@ -156,14 +164,18 @@ impl Table {
                     return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
             }
+            let mut updated = false;
             for (column, value) in &set {
                 if !row.contains_key(column) {
                     return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
-                row.insert(column.clone(), value.clone());
+                let old_value = row.insert(column.clone(), value.clone());
+                updated = updated || old_value != Some(value.clone());
             }
-            self.insert(row)?;
-            self.delete_at(offset).map_err(DbError::IoError)?;
+            if updated {
+                self.insert(row)?;
+                self.delete_at(offset).map_err(DbError::IoError)?;
+            }
         }
         Ok(())
     }

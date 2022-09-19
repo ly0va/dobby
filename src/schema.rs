@@ -20,7 +20,7 @@ impl Schema {
     }
 
     pub fn load(path: &Path) -> Result<Schema, io::Error> {
-        let file = File::open(path.join("schema")).expect("Schema file not found");
+        let file = File::open(path.join(".schema")).expect("Schema file not found");
         let mut reader = io::BufReader::new(file).lines();
         let mut tables = HashMap::new();
         let name = reader.next().expect("Schema file is empty")?;
