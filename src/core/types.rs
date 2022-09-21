@@ -15,6 +15,9 @@ pub enum DbError {
     #[error("Table {0} not found")]
     TableNotFound(String),
 
+    #[error("Column {0} already exists in table {1}")]
+    ColumnAlreadyExists(String, String),
+
     #[error("Column {0} not found in table {1}")]
     ColumnNotFound(String, String),
 
@@ -50,6 +53,7 @@ impl DbError {
         match self {
             DbError::TableAlreadyExists(_) => StatusCode::CONFLICT,
             DbError::TableNotFound(_) => StatusCode::NOT_FOUND,
+            DbError::ColumnAlreadyExists(_, _) => StatusCode::CONFLICT,
             DbError::ColumnNotFound(_, _) => StatusCode::NOT_FOUND,
             DbError::InvalidName(_) => StatusCode::BAD_REQUEST,
             DbError::InvalidValue(_, _) => StatusCode::BAD_REQUEST,
@@ -102,7 +106,7 @@ pub enum TypedValue {
     Str(String),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Deserialize, PartialOrd, Ord)]
 pub enum DataType {
     #[serde(rename = "int")]
     Int,

@@ -99,6 +99,7 @@ async fn main() {
 
     // TODO: add config / cmd arg for the server port and db name
     // TODO: add logging
+    // TODO: return schemas as response to operations over tables
 }
 
 async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {

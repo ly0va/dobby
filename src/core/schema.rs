@@ -1,6 +1,6 @@
 use super::types::DataType;
 use super::types::DbError;
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::path::Path;
@@ -59,13 +59,17 @@ impl Schema {
     pub fn create_table(
         &mut self,
         name: String,
-        columns: Vec<(String, DataType)>,
+        mut columns: Vec<(String, DataType)>,
     ) -> Result<(), DbError> {
         Self::validate_name(&name)?;
         if let Entry::Vacant(entry) = self.tables.entry(name.clone()) {
-            columns
-                .iter()
-                .try_for_each(|(name, _)| Self::validate_name(name))?;
+            columns.sort();
+            for (i, (column, _)) in columns.iter().enumerate() {
+                Self::validate_name(column)?;
+                if i > 0 && column == &columns[i - 1].0 {
+                    return Err(DbError::ColumnAlreadyExists(column.clone(), name));
+                }
+            }
             entry.insert(columns);
             Ok(())
         } else {
@@ -88,11 +92,16 @@ impl Schema {
         mut rename: HashMap<String, String>,
     ) -> Result<(), DbError> {
         if let Entry::Occupied(mut entry) = self.tables.entry(table.clone()) {
+            let mut names = HashSet::new();
             for (column, _) in entry.get_mut().iter_mut() {
                 if rename.contains_key(column) {
                     Self::validate_name(&rename[column])?;
+                    if names.contains(&rename[column]) {
+                        return Err(DbError::ColumnAlreadyExists(rename[column].clone(), table));
+                    }
                     *column = rename.remove(column).unwrap();
                 }
+                names.insert(column.clone());
             }
             if !rename.is_empty() {
                 Err(DbError::ColumnNotFound(

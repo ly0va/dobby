@@ -60,12 +60,12 @@ impl Table {
     }
 
     // TODO: this might be only needed where deserialization is ambiguous, like in rest
-    // // so maybe move calls to it there after confirming gRPC handles types correctly.
+    // so maybe move calls to it there after confirming gRPC handles types correctly.
     fn coerce(&self, mut field_set: FieldSet) -> Result<FieldSet, DbError> {
         let mut coerced = HashMap::new();
         for (column, data_type) in &self.columns {
-            if let Some(value) = field_set.remove(column) {
-                coerced.insert(column.clone(), value.coerce(*data_type)?);
+            if let Some((column, value)) = field_set.remove_entry(column) {
+                coerced.insert(column, value.coerce(*data_type)?);
             } else {
                 continue;
             }

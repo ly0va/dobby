@@ -1,6 +1,6 @@
 use super::schema::Schema;
 use super::table::Table;
-use super::types::{DataType, DbError, FieldSet, Query};
+use super::types::{DbError, FieldSet, Query};
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -52,7 +52,7 @@ impl Database {
                 self.schema.create_table(table, columns).map(|_| vec![])
             }
             Query::Drop { table } => self.schema.drop_table(table).map(|_| vec![]),
-            Query::Alter { table, rename, .. } => {
+            Query::Alter { table, rename } => {
                 self.schema.alter_table(table, rename).map(|_| vec![])
             }
         }
