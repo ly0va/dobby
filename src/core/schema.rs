@@ -13,10 +13,7 @@ pub struct Schema {
 
 impl Schema {
     pub fn new(name: String) -> Self {
-        Schema {
-            tables: HashMap::new(),
-            name,
-        }
+        Schema { tables: HashMap::new(), name }
     }
 
     pub fn load(path: &Path) -> Result<Schema, io::Error> {
@@ -80,15 +77,25 @@ impl Schema {
         }
     }
 
-    pub fn alter_table(&mut self, table: String, rename: (String, String)) -> Result<(), DbError> {
+    pub fn alter_table(
+        &mut self,
+        table: String,
+        mut rename: HashMap<String, String>,
+    ) -> Result<(), DbError> {
         if let Entry::Occupied(mut entry) = self.tables.entry(table.clone()) {
-            let (old_name, new_name) = rename;
-            Self::validate_name(&new_name)?;
-            if let Some(column) = entry.get_mut().iter_mut().find(|(n, _)| n == &old_name) {
-                column.0 = new_name;
-                Ok(())
+            for (column, _) in entry.get_mut().iter_mut() {
+                if rename.contains_key(column) {
+                    Self::validate_name(&rename[column])?;
+                    *column = rename.remove(column).unwrap();
+                }
+            }
+            if !rename.is_empty() {
+                Err(DbError::ColumnNotFound(
+                    rename.keys().next().unwrap().clone(),
+                    table,
+                ))
             } else {
-                Err(DbError::ColumnNotFound(old_name, table))
+                Ok(())
             }
         } else {
             Err(DbError::TableNotFound(table))

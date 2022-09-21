@@ -1,7 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
 use thiserror::Error;
+use warp::http::StatusCode;
 
 pub type FieldSet = HashMap<String, TypedValue>;
 
@@ -13,14 +15,8 @@ pub enum DbError {
     #[error("Table {0} not found")]
     TableNotFound(String),
 
-    #[error("Column {0} already exists in table {1}")]
-    ColumnAlreadyExists(String, String),
-
     #[error("Column {0} not found in table {1}")]
     ColumnNotFound(String, String),
-
-    #[error("Invalid datatype {0} in found in schema")]
-    InvalidDataType(String),
 
     #[error("Name {0} cannot be used for a table or a column")]
     InvalidName(String),
@@ -31,11 +27,33 @@ pub enum DbError {
     #[error("Incomplete data - missing {0} for table {1}")]
     IncompleteData(String, String),
 
-    #[error("Invalid query {0}")]
-    InvalidQuery(String),
-
     #[error("IO Error")]
     IoError(#[from] std::io::Error),
+}
+
+impl warp::reject::Reject for DbError {}
+
+impl Serialize for DbError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl DbError {
+    pub fn status_code(&self) -> StatusCode {
+        match self {
+            DbError::TableAlreadyExists(_) => StatusCode::CONFLICT,
+            DbError::TableNotFound(_) => StatusCode::NOT_FOUND,
+            DbError::ColumnNotFound(_, _) => StatusCode::NOT_FOUND,
+            DbError::InvalidName(_) => StatusCode::BAD_REQUEST,
+            DbError::InvalidValue(_, _) => StatusCode::BAD_REQUEST,
+            DbError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,
+            DbError::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -67,16 +85,12 @@ pub enum Query {
     },
     Alter {
         table: String,
-        // TODO: add and drop won't work obviously
-        // drop might work if we update all rows using new schema
-        // add needs a default value
-        _add: Option<(String, DataType)>,
-        _drop: Option<String>,
-        rename: (String, String),
+        rename: HashMap<String, String>,
     },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
 pub enum TypedValue {
     Int(i64),
     Float(f64),
@@ -84,7 +98,7 @@ pub enum TypedValue {
     Str(String),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Deserialize)]
 pub enum DataType {
     Int,
     Float,
@@ -142,6 +156,45 @@ impl TypedValue {
                 let length = (bytes.len() as u64).to_le_bytes().to_vec();
                 [length, bytes].concat()
             }
+        }
+    }
+
+    pub fn coerce(self, to: DataType) -> Result<Self, DbError> {
+        if self.data_type() == to {
+            return Ok(self);
+        }
+
+        match (&self, to) {
+            (TypedValue::Str(s), DataType::Char) => {
+                if s.len() == 1 {
+                    Ok(TypedValue::Char(s.chars().next().unwrap()))
+                } else {
+                    Err(DbError::InvalidValue(self, to))
+                }
+            }
+            (TypedValue::Str(s), DataType::Int) => s
+                .parse::<i64>()
+                .map(TypedValue::Int)
+                .map_err(|_| DbError::InvalidValue(self, to)),
+            (TypedValue::Str(s), DataType::Float) => s
+                .parse::<f64>()
+                .map(TypedValue::Float)
+                .map_err(|_| DbError::InvalidValue(self, to)),
+
+            (TypedValue::Char(c), DataType::Str) => Ok(TypedValue::Str(c.to_string())),
+            (TypedValue::Char(c), DataType::Int) => c
+                .to_string()
+                .parse::<i64>()
+                .map(TypedValue::Int)
+                .map_err(|_| DbError::InvalidValue(self, to)),
+            (TypedValue::Char(c), DataType::Float) => c
+                .to_string()
+                .parse::<f64>()
+                .map(TypedValue::Float)
+                .map_err(|_| DbError::InvalidValue(self, to)),
+
+            (TypedValue::Int(i), DataType::Float) => Ok(TypedValue::Float(*i as f64)),
+            (v, _) => Err(DbError::InvalidValue(v.clone(), to)),
         }
     }
 }

@@ -28,8 +28,7 @@ impl Table {
             self.file.read_exact(&mut deleted).ok()?;
 
             for (column, data_type) in &self.columns {
-                let value = TypedValue::read(*data_type, &mut self.file);
-                match value {
+                match TypedValue::read(*data_type, &mut self.file) {
                     Ok(value) => row.insert(column.clone(), value),
                     Err(e) => return Some(Err(e)),
                 };
@@ -57,14 +56,32 @@ impl Table {
             .create(true)
             .open(path.join(name.clone()))
             .expect("Failed to open table");
-        Self {
-            name,
-            columns,
-            file,
+        Self { name, columns, file }
+    }
+
+    // TODO: this might be only needed where deserialization is ambiguous, like in rest
+    // // so maybe move calls to it there after confirming gRPC handles types correctly.
+    fn coerce(&self, mut field_set: FieldSet) -> Result<FieldSet, DbError> {
+        let mut coerced = HashMap::new();
+        for (column, data_type) in &self.columns {
+            if let Some(value) = field_set.remove(column) {
+                coerced.insert(column.clone(), value.coerce(*data_type)?);
+            } else {
+                continue;
+            }
+        }
+        if field_set.is_empty() {
+            Ok(coerced)
+        } else {
+            Err(DbError::ColumnNotFound(
+                field_set.keys().next().unwrap().clone(),
+                self.name.clone(),
+            ))
         }
     }
 
-    pub fn insert(&mut self, values: HashMap<String, TypedValue>) -> Result<(), DbError> {
+    pub fn insert(&mut self, values: HashMap<String, TypedValue>) -> Result<FieldSet, DbError> {
+        let values = self.coerce(values)?;
         let mut row = vec![0]; // 0 - "not deleted"
         for (name, data_type) in &self.columns {
             let value = values
@@ -77,7 +94,8 @@ impl Table {
         }
 
         self.file.seek(SeekFrom::End(0)).map_err(DbError::IoError)?;
-        self.file.write_all(&row).map_err(DbError::IoError)
+        self.file.write_all(&row).map_err(DbError::IoError)?;
+        Ok(values)
     }
 
     pub fn select(
@@ -85,7 +103,8 @@ impl Table {
         columns: Vec<String>,
         conditions: FieldSet,
     ) -> Result<Vec<FieldSet>, DbError> {
-        let mut result = Vec::new();
+        let conditions = self.coerce(conditions)?;
+        let mut selected = Vec::new();
         self.file
             .seek(SeekFrom::Start(0))
             .map_err(DbError::IoError)?;
@@ -100,21 +119,27 @@ impl Table {
                     return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
             }
-            let mut selected = HashMap::new();
+
             for column in &columns {
-                selected.insert(
-                    column.clone(),
-                    row.remove(column).ok_or_else(|| {
-                        DbError::ColumnNotFound(column.clone(), self.name.clone())
-                    })?,
-                );
+                if !row.contains_key(column) {
+                    return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
+                }
             }
-            result.push(selected);
+
+            row.retain(|key, _| columns.is_empty() || columns.contains(key));
+            selected.push(row);
         }
-        Ok(result)
+        Ok(selected)
     }
 
-    pub fn update(&mut self, set: FieldSet, conditions: FieldSet) -> Result<(), DbError> {
+    pub fn update(
+        &mut self,
+        set: FieldSet,
+        conditions: FieldSet,
+    ) -> Result<Vec<FieldSet>, DbError> {
+        let set = self.coerce(set)?;
+        let conditions = self.coerce(conditions)?;
+        let mut updated = Vec::new();
         let eof = self.file.seek(SeekFrom::End(0)).map_err(DbError::IoError)?;
         self.file
             .seek(SeekFrom::Start(0))
@@ -133,23 +158,26 @@ impl Table {
                     return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
             }
-            let mut updated = false;
+            let mut was_updated = false;
             for (column, value) in &set {
                 if !row.contains_key(column) {
                     return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
                 let old_value = row.insert(column.clone(), value.clone());
-                updated = updated || old_value != Some(value.clone());
+                was_updated = was_updated || old_value != Some(value.clone());
             }
-            if updated {
+            if was_updated {
+                updated.push(row.clone());
                 self.insert(row)?;
                 self.delete_at(offset).map_err(DbError::IoError)?;
             }
         }
-        Ok(())
+        Ok(updated)
     }
 
-    pub fn delete(&mut self, conditions: FieldSet) -> Result<(), DbError> {
+    pub fn delete(&mut self, conditions: FieldSet) -> Result<Vec<FieldSet>, DbError> {
+        let conditions = self.coerce(conditions)?;
+        let mut deleted = Vec::new();
         self.file
             .seek(SeekFrom::Start(0))
             .map_err(DbError::IoError)?;
@@ -164,8 +192,9 @@ impl Table {
                     return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
             }
+            deleted.push(row);
             self.delete_at(offset).map_err(DbError::IoError)?;
         }
-        Ok(())
+        Ok(deleted)
     }
 }
