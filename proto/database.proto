@@ -1,0 +1,64 @@
+syntax = "proto3";
+package database;
+
+message TypedValue {
+    oneof data {
+        int64 int_data = 2;
+        double float_data = 3;
+        string string_data = 4;
+    }
+}
+
+message Select {
+    string from = 1;
+    repeated string columns = 2;
+    map<string, TypedValue> conditions = 3;
+}
+
+message Insert {
+    string into = 1;
+    map<string, TypedValue> values = 2;
+}
+
+message Update {
+    string table = 1;
+    map<string, TypedValue> set = 2;
+    map<string, TypedValue> conditions = 3;
+}
+
+message Delete {
+    string from = 1;
+    map<string, TypedValue> conditions = 2;
+}
+
+message Drop {
+    string table = 1;
+}
+
+message Alter {
+    string table = 1;
+    // column renamings
+    map<string, string> rename = 2;
+}
+
+message Query {
+    oneof query {
+        Select select = 1;
+        Insert insert = 2;
+        Update update = 3;
+        Delete delete = 4;
+        Drop drop = 5;
+        Alter alter = 6;
+    }
+}
+
+message Reply {
+    message Row {
+        map<string, TypedValue> data = 1;
+    }
+    repeated Row rows = 1;
+}
+
+service Database {
+    rpc Execute(Query) returns (Reply);
+}

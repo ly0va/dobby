@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
+
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use warp::http::StatusCode;
 
 pub type FieldSet = HashMap<String, TypedValue>;
 
@@ -37,30 +37,12 @@ pub enum DbError {
     IoError(#[from] std::io::Error),
 }
 
-impl warp::reject::Reject for DbError {}
-
 impl Serialize for DbError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl DbError {
-    pub fn status_code(&self) -> StatusCode {
-        match self {
-            DbError::TableAlreadyExists(_) => StatusCode::CONFLICT,
-            DbError::TableNotFound(_) => StatusCode::NOT_FOUND,
-            DbError::ColumnAlreadyExists(_, _) => StatusCode::CONFLICT,
-            DbError::ColumnNotFound(_, _) => StatusCode::NOT_FOUND,
-            DbError::InvalidName(_) => StatusCode::BAD_REQUEST,
-            DbError::InvalidValue(_, _) => StatusCode::BAD_REQUEST,
-            DbError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,
-            DbError::InvalidDataType(_) => StatusCode::BAD_REQUEST,
-            DbError::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        }
     }
 }
 

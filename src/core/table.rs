@@ -1,9 +1,9 @@
+use super::types::{DataType, DbError, FieldSet, TypedValue};
+
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
-
-use super::types::{DataType, DbError, FieldSet, TypedValue};
 
 #[derive(Debug)]
 pub struct Table {
