@@ -16,26 +16,31 @@ impl Schema {
         Schema { tables: HashMap::new(), name }
     }
 
-    pub fn load(path: &Path) -> Result<Schema, io::Error> {
+    pub fn load(path: &Path) -> Schema {
         let file = File::open(path.join(".schema")).expect("Schema file not found");
         let mut reader = io::BufReader::new(file).lines();
         let mut tables = HashMap::new();
-        let name = reader.next().expect("Schema file is empty")?;
+        let name = reader
+            .next()
+            .expect("Schema file is empty")
+            .expect("Failed to read schema file");
         for line in reader {
-            let line = line?;
+            let line = line.expect("Failed to read schema file");
             let (table, columns) = line.split_once('#').expect("Schema file corrupted");
             for column in columns.split(',') {
                 let (column, data_type) = column.split_once(':').expect("Schema file corrupted");
                 tables
                     .entry(table.to_string())
                     .or_insert_with(Vec::new)
-                    .push((column.to_string(), data_type.into()));
+                    .push((
+                        column.to_string(),
+                        data_type.try_into().expect("Schema file corrupted"),
+                    ));
             }
         }
-        Ok(Schema { tables, name })
+        Schema { tables, name }
     }
 
-    // TODO: dump the schema at some point
     pub fn dump(&self, path: &Path) -> Result<(), io::Error> {
         let mut file = File::create(path.join(".schema"))?;
         file.write_all(self.name.as_bytes())?;

@@ -27,6 +27,9 @@ pub enum DbError {
     #[error("Incomplete data - missing {0} for table {1}")]
     IncompleteData(String, String),
 
+    #[error("Invalid datatype: {0}")]
+    InvalidDataType(String),
+
     #[error("IO Error")]
     IoError(#[from] std::io::Error),
 }
@@ -51,6 +54,7 @@ impl DbError {
             DbError::InvalidName(_) => StatusCode::BAD_REQUEST,
             DbError::InvalidValue(_, _) => StatusCode::BAD_REQUEST,
             DbError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,
+            DbError::InvalidDataType(_) => StatusCode::BAD_REQUEST,
             DbError::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -100,9 +104,13 @@ pub enum TypedValue {
 
 #[derive(Copy, Clone, PartialEq, Eq, Deserialize)]
 pub enum DataType {
+    #[serde(rename = "int")]
     Int,
+    #[serde(rename = "float")]
     Float,
+    #[serde(rename = "char")]
     Char,
+    #[serde(rename = "string")]
     Str,
 }
 
@@ -240,14 +248,16 @@ impl fmt::Debug for DataType {
     }
 }
 
-impl From<&str> for DataType {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for DataType {
+    type Error = DbError;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
-            "int" => DataType::Int,
-            "float" => DataType::Float,
-            "char" => DataType::Char,
-            "string" => DataType::Str,
-            _ => panic!("Unknown data type: {}", s),
+            "int" => Ok(DataType::Int),
+            "float" => Ok(DataType::Float),
+            "char" => Ok(DataType::Char),
+            "string" => Ok(DataType::Str),
+            _ => Err(DbError::InvalidDataType(s.to_string())),
         }
     }
 }

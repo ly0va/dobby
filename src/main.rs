@@ -15,6 +15,7 @@ async fn main() {
     let db = Arc::clone(&db_itself);
     let select = warp::get()
         .and(warp::path::param())
+        .and(warp::path::end())
         .and(warp::query::<FieldSet>())
         .and_then(move |from: String, conditions: FieldSet| {
             let db = Arc::clone(&db);
@@ -24,6 +25,7 @@ async fn main() {
     let db = Arc::clone(&db_itself);
     let insert = warp::post()
         .and(warp::path::param())
+        .and(warp::path::end())
         .and(warp::body::json())
         .and_then(move |into: String, values: FieldSet| {
             let db = Arc::clone(&db);
@@ -33,6 +35,7 @@ async fn main() {
     let db = Arc::clone(&db_itself);
     let update = warp::put()
         .and(warp::path::param())
+        .and(warp::path::end())
         .and(warp::query::<FieldSet>())
         .and(warp::body::json())
         .and_then(move |table: String, conditions: FieldSet, set: FieldSet| {
@@ -43,6 +46,7 @@ async fn main() {
     let db = Arc::clone(&db_itself);
     let delete = warp::delete()
         .and(warp::path::param())
+        .and(warp::path::end())
         .and(warp::query::<FieldSet>())
         .and_then(move |from: String, conditions: FieldSet| {
             let db = Arc::clone(&db);
@@ -53,6 +57,7 @@ async fn main() {
     let drop = warp::delete()
         .and(warp::path::param())
         .and(warp::path("drop"))
+        .and(warp::path::end())
         .and_then(move |table: String| {
             let db = Arc::clone(&db);
             execute_on(db, Query::Drop { table })
@@ -62,6 +67,7 @@ async fn main() {
     let create = warp::post()
         .and(warp::path::param())
         .and(warp::path("create"))
+        .and(warp::path::end())
         .and(warp::body::json())
         .and_then(move |table: String, columns: HashMap<String, DataType>| {
             let db = Arc::clone(&db);
@@ -73,6 +79,7 @@ async fn main() {
     let alter = warp::put()
         .and(warp::path::param())
         .and(warp::path("alter"))
+        .and(warp::path::end())
         .and(warp::query::<HashMap<String, String>>())
         .and_then(move |table: String, rename: HashMap<String, String>| {
             let db = Arc::clone(&db);
@@ -102,8 +109,8 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infa
         ))
     } else {
         Ok(warp::reply::with_status(
-            warp::reply::json(&"Unknown error"),
-            warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            warp::reply::json(&"Invalid request"),
+            warp::http::StatusCode::BAD_REQUEST,
         ))
     }
 }
@@ -112,6 +119,7 @@ async fn execute_on(
     db: Arc<Mutex<Database>>,
     query: Query,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    dbg!(&query);
     let result = db.lock().unwrap().execute(query)?;
     Ok(warp::reply::json(&result))
 }

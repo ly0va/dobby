@@ -14,7 +14,7 @@ pub struct Database {
 
 impl Database {
     pub fn open(path: PathBuf) -> Self {
-        let schema = Schema::load(&path).expect("Failed to load database schema");
+        let schema = Schema::load(&path);
         Database { tables: HashMap::new(), path, schema }
     }
 
