@@ -5,6 +5,9 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Debug)]
 pub struct Table {
     pub name: String,
@@ -59,15 +62,11 @@ impl Table {
         Self { name, columns, file }
     }
 
-    // TODO: this might be only needed where deserialization is ambiguous, like in rest
-    // so maybe move calls to it there after confirming gRPC handles types correctly.
     fn coerce(&self, mut field_set: FieldSet) -> Result<FieldSet, DbError> {
         let mut coerced = HashMap::new();
         for (column, data_type) in &self.columns {
             if let Some((column, value)) = field_set.remove_entry(column) {
                 coerced.insert(column, value.coerce(*data_type)?);
-            } else {
-                continue;
             }
         }
         if field_set.is_empty() {
@@ -78,6 +77,18 @@ impl Table {
                 self.name.clone(),
             ))
         }
+    }
+
+    fn check_conditions(&self, row: &FieldSet, conditions: &FieldSet) -> Result<bool, DbError> {
+        let mut result = true;
+        for (column, value) in conditions {
+            if let Some(row_value) = row.get(column) {
+                result &= row_value == value;
+            } else {
+                return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
+            }
+        }
+        Ok(result)
     }
 
     pub fn insert(&mut self, values: HashMap<String, TypedValue>) -> Result<FieldSet, DbError> {
@@ -108,16 +119,11 @@ impl Table {
         self.file
             .seek(SeekFrom::Start(0))
             .map_err(DbError::IoError)?;
-        'outer: while let Some(row) = self.next_row() {
+        while let Some(row) = self.next_row() {
             let Row { mut row, .. } = row.map_err(DbError::IoError)?;
-            for (column, value) in &conditions {
-                if let Some(row_value) = row.get(column) {
-                    if row_value != value {
-                        continue 'outer;
-                    }
-                } else {
-                    return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
-                }
+
+            if !self.check_conditions(&row, &conditions)? {
+                continue;
             }
 
             for column in &columns {
@@ -144,28 +150,26 @@ impl Table {
         self.file
             .seek(SeekFrom::Start(0))
             .map_err(DbError::IoError)?;
-        'outer: while let Some(row) = self.next_row() {
+        while let Some(row) = self.next_row() {
             let Row { offset, mut row } = row.map_err(DbError::IoError)?;
+
             if offset == eof {
                 break;
             }
-            for (column, value) in &conditions {
-                if let Some(row_value) = row.get(column) {
-                    if row_value != value {
-                        continue 'outer;
-                    }
-                } else {
-                    return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
-                }
+
+            if !self.check_conditions(&row, &conditions)? {
+                continue;
             }
+
             let mut was_updated = false;
             for (column, value) in &set {
                 if !row.contains_key(column) {
                     return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
                 }
                 let old_value = row.insert(column.clone(), value.clone());
-                was_updated = was_updated || old_value != Some(value.clone());
+                was_updated |= old_value != Some(value.clone());
             }
+
             if was_updated {
                 updated.push(row.clone());
                 self.insert(row)?;
@@ -181,16 +185,10 @@ impl Table {
         self.file
             .seek(SeekFrom::Start(0))
             .map_err(DbError::IoError)?;
-        'outer: while let Some(row) = self.next_row() {
+        while let Some(row) = self.next_row() {
             let Row { offset, row } = row.map_err(DbError::IoError)?;
-            for (column, value) in &conditions {
-                if let Some(row_value) = row.get(column) {
-                    if row_value != value {
-                        continue 'outer;
-                    }
-                } else {
-                    return Err(DbError::ColumnNotFound(column.clone(), self.name.clone()));
-                }
+            if !self.check_conditions(&row, &conditions)? {
+                continue;
             }
             deleted.push(row);
             self.delete_at(offset).map_err(DbError::IoError)?;

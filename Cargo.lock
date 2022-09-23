@@ -206,6 +206,7 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
+ "tempfile",
  "thiserror",
  "tokio",
  "tonic",

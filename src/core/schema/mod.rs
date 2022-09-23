@@ -6,7 +6,10 @@ use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::path::Path;
 
-#[derive(Debug, Clone)]
+#[cfg(test)]
+mod tests;
+
+#[derive(Debug, Clone, Default)]
 pub struct Schema {
     pub tables: HashMap<String, Vec<(String, DataType)>>,
     pub name: String,
