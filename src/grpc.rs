@@ -1,17 +1,17 @@
-pub mod proto {
-    tonic::include_proto!("database");
-}
-
 use proto::database_server::{self as service, DatabaseServer};
 use proto::{query, typed_value};
 use tonic::{transport::Server, Request, Response, Status};
 
-use crate::core::types::{Query, TypedValue};
+use crate::core::types::{DbError, FieldSet, Query, TypedValue};
 use crate::core::Database;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+
+pub mod proto {
+    tonic::include_proto!("database");
+}
 
 pub struct DatabaseService {
     db: Arc<Mutex<Database>>,
@@ -27,16 +27,8 @@ impl service::Database for DatabaseService {
         let db = Arc::clone(&self.db);
         if let Some(query) = query.query {
             match db.lock().unwrap().execute(query.into()) {
-                Ok(result) => Ok(Response::new(proto::Reply {
-                    rows: result
-                        .into_iter()
-                        .map(|row| proto::reply::Row {
-                            data: row.into_iter().map(|(k, v)| (k, v.into())).collect(),
-                        })
-                        .collect(),
-                })),
-                // TODO: properly match errors
-                Err(err) => Err(Status::internal(err.to_string())),
+                Ok(result) => Ok(Response::new(result.into())),
+                Err(err) => Err(err.into()),
             }
         } else {
             Err(Status::invalid_argument("Query is empty"))
@@ -48,7 +40,7 @@ pub async fn serve(
     db: Arc<Mutex<Database>>,
     address: impl Into<SocketAddr>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let service = DatabaseService { db: Arc::clone(&db) };
+    let service = DatabaseService { db };
 
     Server::builder()
         .add_service(DatabaseServer::new(service))
@@ -56,6 +48,35 @@ pub async fn serve(
         .await?;
 
     Ok(())
+}
+
+impl From<DbError> for Status {
+    fn from(err: DbError) -> Self {
+        match &err {
+            DbError::TableNotFound(_) => Status::not_found(err.to_string()),
+            DbError::ColumnNotFound(_, _) => Status::not_found(err.to_string()),
+            DbError::TableAlreadyExists(_) => Status::already_exists(err.to_string()),
+            DbError::ColumnAlreadyExists(_, _) => Status::already_exists(err.to_string()),
+            DbError::InvalidName(_) => Status::invalid_argument(err.to_string()),
+            DbError::InvalidValue(_, _) => Status::invalid_argument(err.to_string()),
+            DbError::InvalidDataType(_) => Status::invalid_argument(err.to_string()),
+            DbError::IncompleteData(_, _) => Status::invalid_argument(err.to_string()),
+            DbError::IoError(_) => Status::internal(err.to_string()),
+        }
+    }
+}
+
+impl From<Vec<FieldSet>> for proto::Reply {
+    fn from(rows: Vec<FieldSet>) -> Self {
+        proto::Reply {
+            rows: rows
+                .into_iter()
+                .map(|row| proto::reply::Row {
+                    data: row.into_iter().map(|(k, v)| (k, v.into())).collect(),
+                })
+                .collect(),
+        }
+    }
 }
 
 impl From<proto::query::Query> for Query {

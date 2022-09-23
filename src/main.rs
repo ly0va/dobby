@@ -10,10 +10,10 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "dobby", about = "A database as poor as a house elf.")]
 struct Options {
-    #[structopt(parse(from_os_str), help = "path to the database directory")]
+    #[structopt(parse(from_os_str), help = "Path to the database directory")]
     path: PathBuf,
 
-    #[structopt(long, name = "name", help = "create a new database called <name>")]
+    #[structopt(long, name = "name", help = "Creates a new database called <name>")]
     new: Option<String>,
 
     #[structopt(long, default_value = "8080", help = "gRPC server port")]
@@ -44,5 +44,7 @@ async fn main() {
     // TODO: add my custom types
     // TODO: add logging
     // TODO: implement gRPC client
+    // TODO: add cleanup (remove all deleted entries)
+    // TODO: add graceful shutdown
     // TODO: return schemas as response to operations over tables
 }
