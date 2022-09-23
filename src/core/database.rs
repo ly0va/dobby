@@ -28,10 +28,11 @@ impl Database {
     }
 
     pub fn table(&mut self, name: &str) -> Result<&mut Table, DbError> {
+        if !self.schema.tables.contains_key(name) {
+            return Err(DbError::TableNotFound(name.to_string()));
+        }
+
         if !self.tables.contains_key(name) {
-            if !self.schema.tables.contains_key(name) {
-                return Err(DbError::TableNotFound(name.to_string()));
-            }
             let columns = self.schema.tables[name].clone();
             let table = Table::open(name.to_string(), columns, &self.path);
             self.tables.insert(name.to_string(), table);

@@ -16,10 +16,10 @@ struct Options {
     #[structopt(long, name = "name", help = "create a new database called <name>")]
     new: Option<String>,
 
-    #[structopt(long, default_value = "50051", help = "gRPC server port")]
+    #[structopt(long, default_value = "8080", help = "gRPC server port")]
     grpc_port: u16,
 
-    #[structopt(long, default_value = "8080", help = "REST server port")]
+    #[structopt(long, default_value = "8081", help = "REST server port")]
     rest_port: u16,
 }
 
@@ -42,7 +42,7 @@ async fn main() {
     };
 
     // TODO: add my custom types
-    // TODO: add unit tests
     // TODO: add logging
+    // TODO: implement gRPC client
     // TODO: return schemas as response to operations over tables
 }
