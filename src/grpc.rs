@@ -94,9 +94,9 @@ impl From<proto::query::Query> for Query {
 impl From<typed_value::Data> for TypedValue {
     fn from(data: typed_value::Data) -> Self {
         match data {
-            typed_value::Data::IntData(i) => TypedValue::Int(i),
-            typed_value::Data::FloatData(f) => TypedValue::Float(f),
-            typed_value::Data::StringData(s) => TypedValue::Str(s),
+            typed_value::Data::Int(i) => TypedValue::Int(i),
+            typed_value::Data::Float(f) => TypedValue::Float(f),
+            typed_value::Data::Str(s) => TypedValue::Str(s),
         }
     }
 }
@@ -104,16 +104,12 @@ impl From<typed_value::Data> for TypedValue {
 impl From<TypedValue> for proto::TypedValue {
     fn from(value: TypedValue) -> Self {
         match value {
-            TypedValue::Int(i) => proto::TypedValue { data: Some(typed_value::Data::IntData(i)) },
-            TypedValue::Float(f) => {
-                proto::TypedValue { data: Some(typed_value::Data::FloatData(f)) }
+            TypedValue::Int(i) => proto::TypedValue { data: Some(typed_value::Data::Int(i)) },
+            TypedValue::Float(f) => proto::TypedValue { data: Some(typed_value::Data::Float(f)) },
+            TypedValue::Char(c) => {
+                proto::TypedValue { data: Some(typed_value::Data::Str(c.to_string())) }
             }
-            TypedValue::Char(c) => proto::TypedValue {
-                data: Some(typed_value::Data::StringData(c.to_string())),
-            },
-            TypedValue::Str(s) => {
-                proto::TypedValue { data: Some(typed_value::Data::StringData(s)) }
-            }
+            TypedValue::Str(s) => proto::TypedValue { data: Some(typed_value::Data::Str(s)) },
         }
     }
 }

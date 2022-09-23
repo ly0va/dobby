@@ -3,9 +3,9 @@ package database;
 
 message TypedValue {
     oneof data {
-        int64 int_data = 2;
-        double float_data = 3;
-        string string_data = 4;
+        int64 int = 2;
+        double float = 3;
+        string str = 4;
     }
 }
 
