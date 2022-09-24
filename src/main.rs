@@ -33,18 +33,19 @@ async fn main() {
         } else {
             Database::open(opt.path)
         };
+        // TODO: maybe better to use one mutex per table instead of a global one?
         Arc::new(Mutex::new(db))
     };
 
     tokio::select! {
         _ = grpc::serve(Arc::clone(&db), ([0, 0, 0, 0], opt.grpc_port)) => {},
-        _ = rest::serve(Arc::clone(&db), ([0, 0, 0, 0], opt.rest_port)) => {}
+        _ = rest::serve(Arc::clone(&db), ([0, 0, 0, 0], opt.rest_port)) => {},
+        _ = tokio::signal::ctrl_c() => { println!("\nShutting down...") },
     };
 
     // TODO: add my custom types
     // TODO: add logging
     // TODO: implement gRPC client
     // TODO: add cleanup (remove all deleted entries)
-    // TODO: add graceful shutdown
     // TODO: return schemas as response to operations over tables
 }
