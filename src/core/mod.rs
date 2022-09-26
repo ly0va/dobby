@@ -4,4 +4,3 @@ pub mod table;
 pub mod types;
 
 pub use database::Database;
-pub use schema::Schema;

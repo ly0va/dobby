@@ -18,6 +18,9 @@ pub enum DbError {
     #[error("Column {0} already exists in table {1}")]
     ColumnAlreadyExists(String, String),
 
+    #[error("Can't create a table without columns")]
+    NoColumns,
+
     #[error("Column {0} not found in table {1}")]
     ColumnNotFound(String, String),
 
@@ -89,6 +92,7 @@ pub enum TypedValue {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Deserialize, PartialOrd, Ord)]
+#[repr(i32)]
 pub enum DataType {
     #[serde(rename = "int")]
     Int,
@@ -244,6 +248,18 @@ impl TryFrom<&str> for DataType {
             "char" => Ok(DataType::Char),
             "string" => Ok(DataType::Str),
             _ => Err(DbError::InvalidDataType(s.to_string())),
+        }
+    }
+}
+
+impl From<i32> for DataType {
+    fn from(i: i32) -> Self {
+        match i {
+            0 => DataType::Int,
+            1 => DataType::Float,
+            2 => DataType::Char,
+            3 => DataType::Str,
+            _ => unreachable!("Invalid data type"),
         }
     }
 }

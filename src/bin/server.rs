@@ -1,14 +1,10 @@
-mod core;
-mod grpc;
-mod rest;
-
-use crate::core::Database;
+use dobby::{core::Database, grpc, rest};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "dobby", about = "A database as poor as a house elf.")]
+#[structopt(name = "dobby", about = "A database engine as poor as a house elf.")]
 struct Options {
     #[structopt(parse(from_os_str), help = "Path to the database directory")]
     path: PathBuf,
@@ -45,7 +41,6 @@ async fn main() {
 
     // TODO: add my custom types
     // TODO: add logging
-    // TODO: implement gRPC client
     // TODO: add cleanup (remove all deleted entries)
     // TODO: return schemas as response to operations over tables
 }

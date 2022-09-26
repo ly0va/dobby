@@ -66,6 +66,9 @@ impl Schema {
         mut columns: Vec<(String, DataType)>,
     ) -> Result<(), DbError> {
         Self::validate_name(&name)?;
+        if columns.is_empty() {
+            return Err(DbError::NoColumns);
+        }
         if let Entry::Vacant(entry) = self.tables.entry(name.clone()) {
             columns.sort();
             for (i, (column, _)) in columns.iter().enumerate() {

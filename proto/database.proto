@@ -3,9 +3,9 @@ package database;
 
 message TypedValue {
     oneof data {
-        int64 int = 2;
-        double float = 3;
-        string str = 4;
+        int64 int = 1;
+        double float = 2;
+        string str = 3;
     }
 }
 
@@ -41,6 +41,17 @@ message Alter {
     map<string, string> rename = 2;
 }
 
+message Create {
+    enum Type {
+        INT = 0;
+        FLOAT = 1;
+        CHAR = 2;
+        STRING = 3;
+    }
+    string table = 1;
+    map<string, Type> columns = 2;
+}
+
 message Query {
     oneof query {
         Select select = 1;
@@ -49,6 +60,7 @@ message Query {
         Delete delete = 4;
         Drop drop = 5;
         Alter alter = 6;
+        Create create = 7;
     }
 }
 

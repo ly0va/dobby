@@ -18,6 +18,7 @@ impl DbError {
             DbError::TableNotFound(_) => StatusCode::NOT_FOUND,
             DbError::ColumnAlreadyExists(_, _) => StatusCode::CONFLICT,
             DbError::ColumnNotFound(_, _) => StatusCode::NOT_FOUND,
+            DbError::NoColumns => StatusCode::BAD_REQUEST,
             DbError::InvalidName(_) => StatusCode::BAD_REQUEST,
             DbError::InvalidValue(_, _) => StatusCode::BAD_REQUEST,
             DbError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,

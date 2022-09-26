@@ -57,6 +57,7 @@ impl From<DbError> for Status {
             DbError::ColumnNotFound(_, _) => Status::not_found(err.to_string()),
             DbError::TableAlreadyExists(_) => Status::already_exists(err.to_string()),
             DbError::ColumnAlreadyExists(_, _) => Status::already_exists(err.to_string()),
+            DbError::NoColumns => Status::invalid_argument(err.to_string()),
             DbError::InvalidName(_) => Status::invalid_argument(err.to_string()),
             DbError::InvalidValue(_, _) => Status::invalid_argument(err.to_string()),
             DbError::InvalidDataType(_) => Status::invalid_argument(err.to_string()),
@@ -76,6 +77,21 @@ impl From<Vec<FieldSet>> for proto::Reply {
                 })
                 .collect(),
         }
+    }
+}
+
+impl From<proto::Reply> for Vec<FieldSet> {
+    fn from(reply: proto::Reply) -> Self {
+        reply
+            .rows
+            .into_iter()
+            .map(|row| {
+                row.data
+                    .into_iter()
+                    .filter_map(|(k, v)| v.data.map(|v| (k, v.into())))
+                    .collect()
+            })
+            .collect()
     }
 }
 
@@ -108,6 +124,14 @@ impl From<proto::query::Query> for Query {
             },
             query::Query::Drop(drop) => Query::Drop { table: drop.table },
             query::Query::Alter(alter) => Query::Alter { table: alter.table, rename: alter.rename },
+            query::Query::Create(create) => Query::Create {
+                table: create.table,
+                columns: create
+                    .columns
+                    .into_iter()
+                    .map(|(k, v)| (k, v.into()))
+                    .collect(),
+            },
         }
     }
 }
