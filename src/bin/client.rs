@@ -156,46 +156,60 @@ impl From<Command> for proto::Query {
     }
 }
 
-fn pretty_table(rows: &[FieldSet]) -> Table {
-    let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-
-    let columns: Vec<_> = rows.first().unwrap().keys().cloned().collect();
-    table.set_titles(Row::new(columns.iter().map(|s| Cell::new(s)).collect()));
-
-    for row in rows {
-        table.add_row(Row::new(
-            columns
-                .iter()
-                .map(|c| Cell::new(&serde_json::to_string_pretty(&row[c]).unwrap()))
-                .collect(),
-        ));
+impl Command {
+    fn columns(&self) -> Option<Vec<String>> {
+        match self {
+            Command::Select { columns, .. } => {
+                if columns.is_empty() {
+                    None
+                } else {
+                    Some(columns.clone())
+                }
+            }
+            Command::Insert { values, .. } => Some(values.iter().map(|(k, _)| k.clone()).collect()),
+            _ => None,
+        }
     }
-
-    table
 }
 
 #[tokio::main]
 async fn main() {
+    // TODO: rustyline
     let opt = Options::from_args();
 
     let mut client = DatabaseClient::connect(opt.url).await.unwrap();
+    let columns = opt.command.columns();
+
     let response = client
         .execute(tonic::Request::new(opt.command.into()))
         .await;
 
     match response {
         Ok(response) => {
-            let response: Vec<FieldSet> = response.into_inner().into();
-            if response.is_empty() {
+            let rows: Vec<FieldSet> = response.into_inner().into();
+            if rows.is_empty() {
                 return;
             }
 
-            let table = pretty_table(&response);
+            let mut table = Table::new();
+            table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+
+            let columns =
+                columns.unwrap_or_else(|| rows.first().unwrap().keys().cloned().collect());
+            table.set_titles(Row::new(columns.iter().map(|s| Cell::new(s)).collect()));
+
+            for row in rows.iter() {
+                table.add_row(Row::new(
+                    columns
+                        .iter()
+                        .map(|c| Cell::new(&row[c].to_string()))
+                        .collect(),
+                ));
+            }
 
             match opt.format {
                 Format::Json => {
-                    println!("{}", serde_json::to_string_pretty(&response).unwrap());
+                    println!("{}", serde_json::to_string_pretty(&rows).unwrap());
                 }
                 Format::Ascii => {
                     table.printstd();

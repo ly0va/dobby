@@ -227,6 +227,17 @@ impl From<&str> for TypedValue {
     }
 }
 
+impl ToString for TypedValue {
+    fn to_string(&self) -> String {
+        match self {
+            TypedValue::Int(i) => i.to_string(),
+            TypedValue::Float(f) => f.to_string(),
+            TypedValue::Char(c) => c.to_string(),
+            TypedValue::Str(s) => s.to_string(),
+        }
+    }
+}
+
 impl fmt::Debug for DataType {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
