@@ -75,7 +75,7 @@ impl Repl {
             .client
             .execute(Request::new(command.into()))
             .await
-            .map_err(|e| format!("error: {}\n", e.message().red()))?;
+            .map_err(|e| format!("{} {}\n", "error:".red().bold(), e.message()))?;
 
         Ok(response.into_inner().into())
     }
