@@ -1,8 +1,9 @@
-use super::{command::Command, format::Format};
+use super::{command::Command, format::Format, helpers::DobbyHelper};
 
 use dobby::core::types::FieldSet;
 use dobby::grpc::proto::database_client::DatabaseClient;
 
+use colored::Colorize;
 use prettytable::{csv, format::consts, Row, Table};
 use rustyline::Editor;
 use structopt::StructOpt;
@@ -11,18 +12,19 @@ use tonic::{transport::Channel, Request};
 #[derive(Debug)]
 pub struct Repl {
     client: DatabaseClient<Channel>,
-    editor: Editor<()>,
+    editor: Editor<DobbyHelper>,
     format: Format,
 }
 
 impl Repl {
     pub async fn init(address: String, format: Format) -> Self {
+        let mut editor = Editor::<DobbyHelper>::new().expect("Failed to init readline");
+        editor.set_helper(Some(DobbyHelper::default()));
         Self {
             client: DatabaseClient::connect(address)
                 .await
                 .expect("Failed to connect to server"),
-            // TODO: implement rustyline helpers
-            editor: Editor::<()>::new().expect("Failed to init readline"),
+            editor,
             format,
         }
     }
@@ -73,7 +75,7 @@ impl Repl {
             .client
             .execute(Request::new(command.into()))
             .await
-            .map_err(|e| format!("error: {}\n", e.message()))?;
+            .map_err(|e| format!("error: {}\n", e.message().red()))?;
 
         Ok(response.into_inner().into())
     }
@@ -90,6 +92,7 @@ impl Repl {
                     match self.execute(line).await {
                         Ok(response) => {
                             self.print_rows(response);
+                            println!();
                         }
                         Err(e) => {
                             println!("{}", e);
