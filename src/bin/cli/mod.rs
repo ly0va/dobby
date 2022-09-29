@@ -1,6 +1,6 @@
 mod command;
 pub mod format;
-mod repl;
 mod helpers;
+mod repl;
 
 pub use repl::Repl;

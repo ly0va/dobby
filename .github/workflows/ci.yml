@@ -13,7 +13,8 @@ jobs:
           toolchain: stable
           components: clippy, rustfmt
 
-      - run: sudo apt install -y protobuf-compiler
+      - name: Install protoc
+        run: sudo apt install -y protobuf-compiler
 
       - name: Check formatting
         uses: actions-rs/cargo@v1
