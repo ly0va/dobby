@@ -10,9 +10,12 @@ jobs:
 
       - uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
           components: clippy, rustfmt
 
-      - name: Test
+      - run: sudo apt install -y protobuf-compiler
+
+      - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
           command: fmt
