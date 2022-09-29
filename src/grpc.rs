@@ -142,7 +142,8 @@ impl From<typed_value::Data> for TypedValue {
         match data {
             typed_value::Data::Int(i) => TypedValue::Int(i),
             typed_value::Data::Float(f) => TypedValue::Float(f),
-            typed_value::Data::Str(s) => TypedValue::Str(s),
+            typed_value::Data::String(s) => TypedValue::String(s),
+            typed_value::Data::StringInvl(i) => TypedValue::StringInvl(i.s1, i.s2),
         }
     }
 }
@@ -153,9 +154,18 @@ impl From<TypedValue> for proto::TypedValue {
             TypedValue::Int(i) => proto::TypedValue { data: Some(typed_value::Data::Int(i)) },
             TypedValue::Float(f) => proto::TypedValue { data: Some(typed_value::Data::Float(f)) },
             TypedValue::Char(c) => {
-                proto::TypedValue { data: Some(typed_value::Data::Str(c.to_string())) }
+                proto::TypedValue { data: Some(typed_value::Data::String(c.to_string())) }
             }
-            TypedValue::Str(s) => proto::TypedValue { data: Some(typed_value::Data::Str(s)) },
+            TypedValue::String(s) => proto::TypedValue { data: Some(typed_value::Data::String(s)) },
+            TypedValue::CharInvl(c1, c2) => proto::TypedValue {
+                data: Some(typed_value::Data::StringInvl(proto::StringInvl {
+                    s1: c1.to_string(),
+                    s2: c2.to_string(),
+                })),
+            },
+            TypedValue::StringInvl(s1, s2) => proto::TypedValue {
+                data: Some(typed_value::Data::StringInvl(proto::StringInvl { s1, s2 })),
+            },
         }
     }
 }

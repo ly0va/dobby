@@ -88,20 +88,21 @@ pub enum TypedValue {
     Int(i64),
     Float(f64),
     Char(char),
-    Str(String),
+    String(String),
+    CharInvl(char, char),
+    StringInvl(String, String),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Deserialize, PartialOrd, Ord)]
+#[serde(rename_all = "snake_case")]
 #[repr(i32)]
 pub enum DataType {
-    #[serde(rename = "int")]
     Int,
-    #[serde(rename = "float")]
     Float,
-    #[serde(rename = "char")]
     Char,
-    #[serde(rename = "string")]
-    Str,
+    String,
+    CharInvl,
+    StringInvl,
 }
 
 impl TypedValue {
@@ -110,11 +111,23 @@ impl TypedValue {
             TypedValue::Int(_) => DataType::Int,
             TypedValue::Float(_) => DataType::Float,
             TypedValue::Char(_) => DataType::Char,
-            TypedValue::Str(_) => DataType::Str,
+            TypedValue::String(_) => DataType::String,
+            TypedValue::CharInvl(_, _) => DataType::CharInvl,
+            TypedValue::StringInvl(_, _) => DataType::StringInvl,
         }
     }
 
     pub fn read<R: io::Read>(data_type: DataType, reader: &mut R) -> Result<Self, io::Error> {
+        let mut read_string = || {
+            let mut length = [0; 8];
+            reader.read_exact(&mut length)?;
+            let length = u64::from_le_bytes(length);
+            let mut buf = vec![0; length as usize];
+            reader.read_exact(&mut buf)?;
+            String::from_utf8(buf)
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8 string"))
+        };
+
         match data_type {
             DataType::Int => {
                 let mut buf = [0; 8];
@@ -131,55 +144,75 @@ impl TypedValue {
                 reader.read_exact(&mut buf)?;
                 Ok(char::from(buf[0]).into())
             }
-            DataType::Str => {
-                let mut length = [0; 8];
-                reader.read_exact(&mut length)?;
-                let length = u64::from_le_bytes(length);
-                let mut buf = vec![0; length as usize];
+            DataType::String => Ok(TypedValue::String(read_string()?)),
+            DataType::StringInvl => Ok(TypedValue::StringInvl(read_string()?, read_string()?)),
+            DataType::CharInvl => {
+                let mut buf = [0; 2];
                 reader.read_exact(&mut buf)?;
-                Ok(TypedValue::Str(String::from_utf8(buf).map_err(|_| {
-                    io::Error::new(io::ErrorKind::InvalidData, "Invalid UTF-8 string")
-                })?))
+                Ok(TypedValue::CharInvl(char::from(buf[0]), char::from(buf[1])))
             }
         }
     }
 
     pub fn into_bytes(self) -> Vec<u8> {
+        let convert_string = |s: String| {
+            let bytes = s.into_bytes();
+            let length = (bytes.len() as u64).to_le_bytes().to_vec();
+            [length, bytes].concat()
+        };
+
         match self {
             TypedValue::Int(i) => i.to_le_bytes().to_vec(),
             TypedValue::Float(f) => f.to_le_bytes().to_vec(),
             TypedValue::Char(c) => vec![c as u8],
-            TypedValue::Str(s) => {
-                let bytes = s.into_bytes();
-                let length = (bytes.len() as u64).to_le_bytes().to_vec();
-                [length, bytes].concat()
-            }
+            TypedValue::String(s) => convert_string(s),
+            TypedValue::CharInvl(c1, c2) => vec![c1 as u8, c2 as u8],
+            TypedValue::StringInvl(s1, s2) => [convert_string(s1), convert_string(s2)].concat(),
         }
     }
 
     pub fn coerce(self, to: DataType) -> Result<Self, DbError> {
+        let string_to_char = |s: &str| {
+            if s.len() == 1 {
+                Ok(s.chars().next().unwrap())
+            } else {
+                Err(DbError::InvalidValue(self.clone(), to))
+            }
+        };
+
         if self.data_type() == to {
             return Ok(self);
         }
 
         match (&self, to) {
-            (TypedValue::Str(s), DataType::Char) => {
-                if s.len() == 1 {
-                    Ok(TypedValue::Char(s.chars().next().unwrap()))
+            (TypedValue::String(s), DataType::Char) => string_to_char(s).map(TypedValue::Char),
+            (TypedValue::String(s), DataType::Int) => s
+                .parse::<i64>()
+                .map(TypedValue::Int)
+                .map_err(|_| DbError::InvalidValue(self, to)),
+            (TypedValue::String(s), DataType::Float) => s
+                .parse::<f64>()
+                .map(TypedValue::Float)
+                .map_err(|_| DbError::InvalidValue(self, to)),
+            (TypedValue::String(s), DataType::StringInvl) => {
+                if let Some((s1, s2)) = s.split_once("..") {
+                    Ok(TypedValue::StringInvl(s1.to_string(), s2.to_string()))
                 } else {
                     Err(DbError::InvalidValue(self, to))
                 }
             }
-            (TypedValue::Str(s), DataType::Int) => s
-                .parse::<i64>()
-                .map(TypedValue::Int)
-                .map_err(|_| DbError::InvalidValue(self, to)),
-            (TypedValue::Str(s), DataType::Float) => s
-                .parse::<f64>()
-                .map(TypedValue::Float)
-                .map_err(|_| DbError::InvalidValue(self, to)),
+            (TypedValue::String(s), DataType::CharInvl) => {
+                if let Some((s1, s2)) = s.split_once("..") {
+                    Ok(TypedValue::CharInvl(
+                        string_to_char(s1)?,
+                        string_to_char(s2)?,
+                    ))
+                } else {
+                    Err(DbError::InvalidValue(self, to))
+                }
+            }
 
-            (TypedValue::Char(c), DataType::Str) => Ok(TypedValue::Str(c.to_string())),
+            (TypedValue::Char(c), DataType::String) => Ok(TypedValue::String(c.to_string())),
             (TypedValue::Char(c), DataType::Int) => c
                 .to_string()
                 .parse::<i64>()
@@ -192,6 +225,10 @@ impl TypedValue {
                 .map_err(|_| DbError::InvalidValue(self, to)),
 
             (TypedValue::Int(i), DataType::Float) => Ok(TypedValue::Float(*i as f64)),
+            (TypedValue::StringInvl(s1, s2), DataType::CharInvl) => Ok(TypedValue::CharInvl(
+                string_to_char(s1)?,
+                string_to_char(s2)?,
+            )),
             (v, _) => Err(DbError::InvalidValue(v.clone(), to)),
         }
     }
@@ -217,13 +254,13 @@ impl From<char> for TypedValue {
 
 impl From<String> for TypedValue {
     fn from(value: String) -> Self {
-        TypedValue::Str(value)
+        TypedValue::String(value)
     }
 }
 
 impl From<&str> for TypedValue {
     fn from(value: &str) -> Self {
-        TypedValue::Str(value.to_string())
+        TypedValue::String(value.to_string())
     }
 }
 
@@ -233,7 +270,9 @@ impl ToString for TypedValue {
             TypedValue::Int(i) => i.to_string(),
             TypedValue::Float(f) => f.to_string(),
             TypedValue::Char(c) => c.to_string(),
-            TypedValue::Str(s) => s.to_string(),
+            TypedValue::String(s) => s.to_string(),
+            TypedValue::CharInvl(c1, c2) => format!("{}..{}", c1, c2),
+            TypedValue::StringInvl(s1, s2) => format!("{}..{}", s1, s2),
         }
     }
 }
@@ -244,7 +283,9 @@ impl fmt::Debug for DataType {
             DataType::Int => write!(f, "int"),
             DataType::Float => write!(f, "float"),
             DataType::Char => write!(f, "char"),
-            DataType::Str => write!(f, "string"),
+            DataType::String => write!(f, "string"),
+            DataType::CharInvl => write!(f, "char_invl"),
+            DataType::StringInvl => write!(f, "string_invl"),
         }
     }
 }
@@ -257,7 +298,9 @@ impl TryFrom<&str> for DataType {
             "int" => Ok(DataType::Int),
             "float" => Ok(DataType::Float),
             "char" => Ok(DataType::Char),
-            "string" => Ok(DataType::Str),
+            "string" => Ok(DataType::String),
+            "char_invl" => Ok(DataType::CharInvl),
+            "string_invl" => Ok(DataType::StringInvl),
             _ => Err(DbError::InvalidDataType(s.to_string())),
         }
     }
@@ -269,7 +312,9 @@ impl From<i32> for DataType {
             0 => DataType::Int,
             1 => DataType::Float,
             2 => DataType::Char,
-            3 => DataType::Str,
+            3 => DataType::String,
+            4 => DataType::CharInvl,
+            5 => DataType::StringInvl,
             _ => unreachable!("Invalid data type"),
         }
     }

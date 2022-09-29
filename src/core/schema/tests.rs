@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn create() -> Result<(), DbError> {
     let mut schema = Schema::default();
-    let table_schema = vec![("column".into(), DataType::Str)];
+    let table_schema = vec![("column".into(), DataType::String)];
 
     schema.create_table("test_table".to_string(), table_schema.clone())?;
 
@@ -15,7 +15,7 @@ fn create() -> Result<(), DbError> {
 #[test]
 fn drop() -> Result<(), DbError> {
     let mut schema = Schema::default();
-    let table_schema = vec![("column".into(), DataType::Str)];
+    let table_schema = vec![("column".into(), DataType::String)];
 
     schema.create_table("test_table".to_string(), table_schema)?;
     schema.drop_table("test_table".to_string())?;
@@ -27,7 +27,7 @@ fn drop() -> Result<(), DbError> {
 #[test]
 fn alter() -> Result<(), DbError> {
     let mut schema = Schema::default();
-    let table_schema = vec![("column".into(), DataType::Str)];
+    let table_schema = vec![("column".into(), DataType::String)];
 
     schema.create_table("test_table".to_string(), table_schema)?;
     schema.alter_table(
@@ -38,7 +38,7 @@ fn alter() -> Result<(), DbError> {
     assert_eq!(schema.tables.len(), 1);
     assert_eq!(
         schema.tables["test_table"],
-        vec![("renamed".into(), DataType::Str)]
+        vec![("renamed".into(), DataType::String)]
     );
     Ok(())
 }

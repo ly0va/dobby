@@ -135,7 +135,6 @@ async fn execute_on(
     db: Arc<Mutex<Database>>,
     query: Query,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    dbg!(&query);
     let result = db.lock().unwrap().execute(query)?;
     Ok(warp::reply::json(&result))
 }

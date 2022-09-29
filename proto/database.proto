@@ -1,11 +1,17 @@
 syntax = "proto3";
 package database;
 
+message StringInvl {
+    string s1 = 1;
+    string s2 = 2;
+}
+
 message TypedValue {
     oneof data {
         int64 int = 1;
         double float = 2;
-        string str = 3;
+        string string = 3;
+        StringInvl string_invl = 4;
     }
 }
 
@@ -47,6 +53,8 @@ message Create {
         FLOAT = 1;
         CHAR = 2;
         STRING = 3;
+        CHAR_INVL = 4;
+        STRING_INVL = 5;
     }
     string table = 1;
     map<string, Type> columns = 2;
