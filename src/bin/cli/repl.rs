@@ -1,0 +1,101 @@
+use super::{command::Command, format::Format};
+use dobby::core::types::FieldSet;
+use dobby::grpc::proto::database_client::DatabaseClient;
+use prettytable::{csv, format::consts, Row, Table};
+use rustyline::Editor;
+use structopt::StructOpt;
+use tonic::transport::Channel;
+
+#[derive(Debug)]
+pub struct Repl {
+    client: DatabaseClient<Channel>,
+    editor: Editor<()>,
+    format: Format,
+}
+
+impl Repl {
+    pub async fn init(address: String, format: Format) -> Self {
+        Self {
+            client: DatabaseClient::connect(address)
+                .await
+                .expect("Failed to connect to server"),
+            // TODO: implement rustyline helpers
+            editor: Editor::<()>::new().expect("Failed to init readline"),
+            format,
+        }
+    }
+
+    fn get_table(rows: &[FieldSet]) -> Table {
+        let columns: Vec<String> = if let Some(first) = rows.first() {
+            first.keys().cloned().collect()
+        } else {
+            return Table::new();
+        };
+
+        let mut table: Table = rows
+            .iter()
+            .map(|row| columns.iter().map(|c| row[c].clone()).collect::<Row>())
+            .collect();
+
+        table.set_titles(columns.iter().collect::<Row>());
+        table.set_format(*consts::FORMAT_NO_LINESEP_WITH_TITLE);
+        table
+    }
+
+    pub fn print_rows(&self, rows: Vec<FieldSet>) {
+        match self.format {
+            Format::Json => {
+                println!("{}", serde_json::to_string_pretty(&rows).unwrap());
+            }
+            Format::Ascii => {
+                Self::get_table(&rows).printstd();
+            }
+            Format::Csv => {
+                let writer = csv::Writer::from_writer(std::io::stdout());
+                Self::get_table(&rows).to_csv_writer(writer).unwrap();
+            }
+            Format::Html => {
+                let mut out = std::io::stdout();
+                Self::get_table(&rows).print_html(&mut out).unwrap();
+            }
+        }
+    }
+
+    pub async fn execute(&mut self, command: String) -> Result<Vec<FieldSet>, String> {
+        // parse the command
+        let command =
+            Command::from_iter_safe(command.split_whitespace()).map_err(|e| e.to_string())?;
+
+        // execute the command
+        let response = self
+            .client
+            .execute(tonic::Request::new(command.into()))
+            .await
+            .map_err(|e| format!("error: {}\n", e.message()))?;
+
+        Ok(response.into_inner().into())
+    }
+
+    pub async fn run(&mut self) {
+        loop {
+            // read the command
+            let readline = self.editor.readline("db> ");
+            match readline {
+                Ok(line) => {
+                    self.editor.add_history_entry(line.as_str());
+
+                    // print the response
+                    match self.execute(line).await {
+                        Ok(response) => {
+                            self.print_rows(response);
+                        }
+                        Err(e) => {
+                            println!("{}", e);
+                        }
+                    }
+                }
+                Err(_) => break,
+            }
+        }
+    }
+}

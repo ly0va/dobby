@@ -3,19 +3,24 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 
+/// A database engine as poor as a house elf
 #[derive(Debug, StructOpt)]
-#[structopt(name = "dobby", about = "A database engine as poor as a house elf.")]
+#[structopt(name = "dobby")]
 struct Options {
-    #[structopt(parse(from_os_str), help = "Path to the database directory")]
+    /// Path to the database directory
+    #[structopt(parse(from_os_str))]
     path: PathBuf,
 
-    #[structopt(long, name = "name", help = "Creates a new database called <name>")]
+    /// Creates a new database called <name>
+    #[structopt(long, name = "name")]
     new: Option<String>,
 
-    #[structopt(long, default_value = "8080", help = "gRPC server port")]
+    /// gRPC server port
+    #[structopt(long, default_value = "8080")]
     grpc_port: u16,
 
-    #[structopt(long, default_value = "8081", help = "REST server port")]
+    /// REST server port
+    #[structopt(long, default_value = "8081")]
     rest_port: u16,
 }
 
