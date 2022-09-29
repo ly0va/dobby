@@ -12,7 +12,7 @@ mod tests;
 #[derive(Debug, Clone, Default)]
 pub struct Schema {
     pub tables: HashMap<String, Vec<(String, DataType)>>,
-    pub name: String,
+    name: String,
 }
 
 impl Schema {
@@ -123,7 +123,7 @@ impl Schema {
         }
     }
 
-    pub fn validate_name(name: &str) -> Result<(), DbError> {
+    fn validate_name(name: &str) -> Result<(), DbError> {
         if name.chars().all(|c| c.is_alphanumeric() || c == '_') {
             Ok(())
         } else {

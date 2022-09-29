@@ -1,10 +1,10 @@
 use super::{command::Command, format::Format, helpers::DobbyHelper};
 
-use dobby::core::types::FieldSet;
+use dobby::core::types::ColumnSet;
 use dobby::grpc::proto::database_client::DatabaseClient;
 
 use colored::Colorize;
-use prettytable::{csv, format::consts, Row, Table};
+use prettytable::{csv, format::consts, Row, Table as PrettyTable};
 use rustyline::Editor;
 use structopt::StructOpt;
 use tonic::{transport::Channel, Request};
@@ -29,14 +29,14 @@ impl Repl {
         }
     }
 
-    fn get_table(rows: &[FieldSet]) -> Table {
+    fn get_table(rows: &[ColumnSet]) -> PrettyTable {
         let columns: Vec<String> = if let Some(first) = rows.first() {
             first.keys().cloned().collect()
         } else {
-            return Table::new();
+            return PrettyTable::new();
         };
 
-        let mut table: Table = rows
+        let mut table: PrettyTable = rows
             .iter()
             .map(|row| columns.iter().map(|c| row[c].clone()).collect::<Row>())
             .collect();
@@ -46,7 +46,7 @@ impl Repl {
         table
     }
 
-    pub fn print_rows(&self, rows: Vec<FieldSet>) {
+    pub fn print_rows(&self, rows: Vec<ColumnSet>) {
         if rows.is_empty() {
             return;
         }
@@ -69,8 +69,10 @@ impl Repl {
         }
     }
 
-    pub async fn execute(&mut self, command: String) -> Result<Vec<FieldSet>, String> {
+    pub async fn execute(&mut self, command: String) -> Result<Vec<ColumnSet>, String> {
         // parse the command
+        // NOTE: this makes it impossible for strings to have whitespace inside -
+        // consider using `shlex` parser.
         let command =
             Command::from_iter_safe(command.split_whitespace()).map_err(|e| e.to_string())?;
 

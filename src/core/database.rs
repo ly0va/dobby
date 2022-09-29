@@ -1,15 +1,15 @@
 use super::schema::Schema;
 use super::table::Table;
-use super::types::{DbError, FieldSet, Query};
+use super::types::{ColumnSet, DbError, Query};
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct Database {
-    pub tables: HashMap<String, Table>,
-    pub path: PathBuf,
-    pub schema: Schema,
+    tables: HashMap<String, Table>,
+    path: PathBuf,
+    schema: Schema,
 }
 
 impl Database {
@@ -41,7 +41,7 @@ impl Database {
         Ok(self.tables.get_mut(name).unwrap())
     }
 
-    pub fn execute(&mut self, query: Query) -> Result<Vec<FieldSet>, DbError> {
+    pub fn execute(&mut self, query: Query) -> Result<Vec<ColumnSet>, DbError> {
         match query {
             Query::Select { from, columns, conditions } => {
                 self.table(&from)?.select(columns, conditions)

@@ -1,4 +1,4 @@
-use crate::core::types::{DataType, DbError, FieldSet, Query};
+use crate::core::types::{ColumnSet, DataType, DbError, Query};
 use crate::core::Database;
 
 use std::collections::HashMap;
@@ -34,8 +34,8 @@ pub async fn serve(db_itself: Arc<Mutex<Database>>, address: impl Into<SocketAdd
     let select = warp::get()
         .and(warp::path::param())
         .and(warp::path::end())
-        .and(warp::query::<FieldSet>())
-        .and_then(move |from: String, conditions: FieldSet| {
+        .and(warp::query::<ColumnSet>())
+        .and_then(move |from: String, conditions: ColumnSet| {
             let db = Arc::clone(&db);
             execute_on(db, Query::Select { from, conditions, columns: vec![] })
         });
@@ -45,7 +45,7 @@ pub async fn serve(db_itself: Arc<Mutex<Database>>, address: impl Into<SocketAdd
         .and(warp::path::param())
         .and(warp::path::end())
         .and(warp::body::json())
-        .and_then(move |into: String, values: FieldSet| {
+        .and_then(move |into: String, values: ColumnSet| {
             let db = Arc::clone(&db);
             execute_on(db, Query::Insert { into, values })
         })
@@ -55,19 +55,21 @@ pub async fn serve(db_itself: Arc<Mutex<Database>>, address: impl Into<SocketAdd
     let update = warp::put()
         .and(warp::path::param())
         .and(warp::path::end())
-        .and(warp::query::<FieldSet>())
+        .and(warp::query::<ColumnSet>())
         .and(warp::body::json())
-        .and_then(move |table: String, conditions: FieldSet, set: FieldSet| {
-            let db = Arc::clone(&db);
-            execute_on(db, Query::Update { table, conditions, set })
-        });
+        .and_then(
+            move |table: String, conditions: ColumnSet, set: ColumnSet| {
+                let db = Arc::clone(&db);
+                execute_on(db, Query::Update { table, conditions, set })
+            },
+        );
 
     let db = Arc::clone(&db_itself);
     let delete = warp::delete()
         .and(warp::path::param())
         .and(warp::path::end())
-        .and(warp::query::<FieldSet>())
-        .and_then(move |from: String, conditions: FieldSet| {
+        .and(warp::query::<ColumnSet>())
+        .and_then(move |from: String, conditions: ColumnSet| {
             let db = Arc::clone(&db);
             execute_on(db, Query::Delete { from, conditions })
         });

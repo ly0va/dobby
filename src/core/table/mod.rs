@@ -1,4 +1,4 @@
-use super::types::{DataType, DbError, FieldSet, TypedValue};
+use super::types::{ColumnSet, DataType, DbError, TypedValue};
 
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
@@ -17,7 +17,7 @@ pub struct Table {
 
 #[derive(Debug, Clone)]
 struct Row {
-    row: FieldSet,
+    row: ColumnSet,
     offset: u64,
 }
 
@@ -62,26 +62,26 @@ impl Table {
         Self { name, columns, file }
     }
 
-    fn coerce(&self, mut field_set: FieldSet) -> Result<FieldSet, DbError> {
+    fn coerce(&self, mut column_set: ColumnSet) -> Result<ColumnSet, DbError> {
         let mut coerced = HashMap::new();
         for (column, data_type) in &self.columns {
-            if let Some((column, value)) = field_set.remove_entry(column) {
+            if let Some((column, value)) = column_set.remove_entry(column) {
                 let value = value.coerce(*data_type)?;
                 value.validate()?;
                 coerced.insert(column, value);
             }
         }
-        if field_set.is_empty() {
+        if column_set.is_empty() {
             Ok(coerced)
         } else {
             Err(DbError::ColumnNotFound(
-                field_set.keys().next().unwrap().clone(),
+                column_set.keys().next().unwrap().clone(),
                 self.name.clone(),
             ))
         }
     }
 
-    fn check_conditions(&self, row: &FieldSet, conditions: &FieldSet) -> Result<bool, DbError> {
+    fn check_conditions(&self, row: &ColumnSet, conditions: &ColumnSet) -> Result<bool, DbError> {
         let mut result = true;
         for (column, value) in conditions {
             if let Some(row_value) = row.get(column) {
@@ -93,7 +93,7 @@ impl Table {
         Ok(result)
     }
 
-    pub fn insert(&mut self, values: HashMap<String, TypedValue>) -> Result<FieldSet, DbError> {
+    pub fn insert(&mut self, values: ColumnSet) -> Result<ColumnSet, DbError> {
         let values = self.coerce(values)?;
         let mut row = vec![0]; // 0 - "not deleted"
         for (name, _type) in &self.columns {
@@ -111,8 +111,8 @@ impl Table {
     pub fn select(
         &mut self,
         columns: Vec<String>,
-        conditions: FieldSet,
-    ) -> Result<Vec<FieldSet>, DbError> {
+        conditions: ColumnSet,
+    ) -> Result<Vec<ColumnSet>, DbError> {
         let conditions = self.coerce(conditions)?;
         let mut selected = Vec::new();
         self.file
@@ -139,9 +139,9 @@ impl Table {
 
     pub fn update(
         &mut self,
-        set: FieldSet,
-        conditions: FieldSet,
-    ) -> Result<Vec<FieldSet>, DbError> {
+        set: ColumnSet,
+        conditions: ColumnSet,
+    ) -> Result<Vec<ColumnSet>, DbError> {
         let set = self.coerce(set)?;
         let conditions = self.coerce(conditions)?;
         let mut updated = Vec::new();
@@ -178,7 +178,7 @@ impl Table {
         Ok(updated)
     }
 
-    pub fn delete(&mut self, conditions: FieldSet) -> Result<Vec<FieldSet>, DbError> {
+    pub fn delete(&mut self, conditions: ColumnSet) -> Result<Vec<ColumnSet>, DbError> {
         let conditions = self.coerce(conditions)?;
         let mut deleted = Vec::new();
         self.file

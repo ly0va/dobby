@@ -5,7 +5,7 @@ use std::io;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-pub type FieldSet = HashMap<String, TypedValue>;
+pub type ColumnSet = HashMap<String, TypedValue>;
 
 #[derive(Debug, Error)]
 pub enum DbError {
@@ -57,20 +57,20 @@ pub enum Query {
     Select {
         from: String,
         columns: Vec<String>,
-        conditions: FieldSet,
+        conditions: ColumnSet,
     },
     Insert {
         into: String,
-        values: FieldSet,
+        values: ColumnSet,
     },
     Update {
         table: String,
-        set: FieldSet,
-        conditions: FieldSet,
+        set: ColumnSet,
+        conditions: ColumnSet,
     },
     Delete {
         from: String,
-        conditions: FieldSet,
+        conditions: ColumnSet,
     },
     Create {
         table: String,

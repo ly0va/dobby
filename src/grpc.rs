@@ -2,7 +2,7 @@ use proto::database_server::{self as service, DatabaseServer};
 use proto::{query, typed_value};
 use tonic::{transport::Server, Request, Response, Status};
 
-use crate::core::types::{DbError, FieldSet, Query, TypedValue};
+use crate::core::types::{ColumnSet, DbError, Query, TypedValue};
 use crate::core::Database;
 
 use std::collections::HashMap;
@@ -69,8 +69,8 @@ impl From<DbError> for Status {
     }
 }
 
-impl From<Vec<FieldSet>> for proto::Reply {
-    fn from(rows: Vec<FieldSet>) -> Self {
+impl From<Vec<ColumnSet>> for proto::Reply {
+    fn from(rows: Vec<ColumnSet>) -> Self {
         proto::Reply {
             rows: rows
                 .into_iter()
@@ -82,7 +82,7 @@ impl From<Vec<FieldSet>> for proto::Reply {
     }
 }
 
-impl From<proto::Reply> for Vec<FieldSet> {
+impl From<proto::Reply> for Vec<ColumnSet> {
     fn from(reply: proto::Reply) -> Self {
         reply
             .rows
