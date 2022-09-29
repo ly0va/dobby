@@ -23,6 +23,7 @@ impl DbError {
             DbError::InvalidValue(_, _) => StatusCode::BAD_REQUEST,
             DbError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,
             DbError::InvalidDataType(_) => StatusCode::BAD_REQUEST,
+            DbError::InvalidRange(_, _) => StatusCode::BAD_REQUEST,
             DbError::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

@@ -66,7 +66,9 @@ impl Table {
         let mut coerced = HashMap::new();
         for (column, data_type) in &self.columns {
             if let Some((column, value)) = field_set.remove_entry(column) {
-                coerced.insert(column, value.coerce(*data_type)?);
+                let value = value.coerce(*data_type)?;
+                value.validate()?;
+                coerced.insert(column, value);
             }
         }
         if field_set.is_empty() {
@@ -94,13 +96,10 @@ impl Table {
     pub fn insert(&mut self, values: HashMap<String, TypedValue>) -> Result<FieldSet, DbError> {
         let values = self.coerce(values)?;
         let mut row = vec![0]; // 0 - "not deleted"
-        for (name, data_type) in &self.columns {
+        for (name, _type) in &self.columns {
             let value = values
                 .get(name)
                 .ok_or_else(|| DbError::IncompleteData(name.clone(), self.name.clone()))?;
-            if value.data_type() != *data_type {
-                return Err(DbError::InvalidValue(value.clone(), *data_type));
-            }
             row.extend_from_slice(&value.clone().into_bytes());
         }
 

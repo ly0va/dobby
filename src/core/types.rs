@@ -36,6 +36,9 @@ pub enum DbError {
     #[error("Invalid datatype: {0}")]
     InvalidDataType(String),
 
+    #[error("Invalid range: {0} > {1}")]
+    InvalidRange(String, String),
+
     #[error("IO Error")]
     IoError(#[from] std::io::Error),
 }
@@ -106,6 +109,23 @@ pub enum DataType {
 }
 
 impl TypedValue {
+    pub fn validate(&self) -> Result<(), DbError> {
+        match self {
+            TypedValue::CharInvl(c1, c2) => {
+                if c1 > c2 {
+                    return Err(DbError::InvalidRange(c1.to_string(), c2.to_string()));
+                }
+            }
+            TypedValue::StringInvl(s1, s2) => {
+                if s1 > s2 {
+                    return Err(DbError::InvalidRange(s1.to_string(), s2.to_string()));
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     pub fn data_type(&self) -> DataType {
         match self {
             TypedValue::Int(_) => DataType::Int,

@@ -63,6 +63,7 @@ impl From<DbError> for Status {
             DbError::InvalidValue(_, _) => Status::invalid_argument(err.to_string()),
             DbError::InvalidDataType(_) => Status::invalid_argument(err.to_string()),
             DbError::IncompleteData(_, _) => Status::invalid_argument(err.to_string()),
+            DbError::InvalidRange(_, _) => Status::invalid_argument(err.to_string()),
             DbError::IoError(_) => Status::internal(err.to_string()),
         }
     }

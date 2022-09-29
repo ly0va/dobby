@@ -12,7 +12,17 @@ const COMMANDS: [&str; 8] = [
     "help", "select", "insert", "update", "delete", "create", "drop", "rename",
 ];
 
-const FLAGS: [&str; 6] = ["-t", "-w", "-c", "--table", "--where", "--columns"];
+const FLAGS: [&str; 9] = [
+    "-t",
+    "-w",
+    "-c",
+    "-v",
+    "--table",
+    "--where",
+    "--columns",
+    "--values",
+    "--help",
+];
 
 #[derive(Helper, Completer, Validator)]
 pub struct DobbyHelper {
