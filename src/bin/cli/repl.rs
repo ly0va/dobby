@@ -47,6 +47,10 @@ impl Repl {
     }
 
     pub fn print_rows(&self, rows: Vec<FieldSet>) {
+        if rows.is_empty() {
+            return;
+        }
+
         match self.format {
             Format::Json => {
                 println!("{}", serde_json::to_string_pretty(&rows).unwrap());
