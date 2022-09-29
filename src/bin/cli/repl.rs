@@ -1,10 +1,12 @@
 use super::{command::Command, format::Format};
+
 use dobby::core::types::FieldSet;
 use dobby::grpc::proto::database_client::DatabaseClient;
+
 use prettytable::{csv, format::consts, Row, Table};
 use rustyline::Editor;
 use structopt::StructOpt;
-use tonic::transport::Channel;
+use tonic::{transport::Channel, Request};
 
 #[derive(Debug)]
 pub struct Repl {
@@ -69,7 +71,7 @@ impl Repl {
         // execute the command
         let response = self
             .client
-            .execute(tonic::Request::new(command.into()))
+            .execute(Request::new(command.into()))
             .await
             .map_err(|e| format!("error: {}\n", e.message()))?;
 
