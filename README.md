@@ -5,7 +5,7 @@
 
 *A database engine as poor as a house elf*
 
-> Disclaimer: this is a university project. Please don't jump to any conclusions when you see
+> **disclaimer**: this is a university project. Please don't jump to any conclusions when you see
 > poorly designed, poorly tested, feature-deprived, underdocumented and/or buggy modules.
 > This is not meant for public use. For educational purposes only.
 
@@ -24,15 +24,17 @@
 - :sparkles: A fancy CLI client
 - :rocket: Try `dobby` on [Heroku](http://dobby.lyova.xyz)!
 - :computer: Cross-platform!
-- :zap: Blazingly fast
+- :zap: Blazingly fast!
 
-You can read about each module in the [docs](./docs).
+## Details
 
-## Installation
+You can read about each module in the [docs](./docs):
 
-```bash
-cargo install --bins --git https://github.com/ly0va/dobby
-```
+- [Installation & usage](./docs/README.md)
+- [Architechture](./docs/architecture.md)
+- [CLI client](./docs/cli.md)
+- [REST service](./docs/rest-api.md)
+- [gRPC serice](./docs/grpc-api.md)
 
 ## Use-case diagram
 
@@ -41,3 +43,6 @@ cargo install --bins --git https://github.com/ly0va/dobby
 ## Class diagram
 
 ![class diagram](./docs/img/class-diagram.png)
+
+> **note**: this doesn't even make sense, since Rust is not an OOP language,
+> but the university course I'm doing this for doesn't really care.

@@ -1,1 +1,1 @@
-web: ./target/release/dobby-server --new demo-db ./demo-db --rest $PORT
+web: ./target/release/dobbyd --new demo-db ./demo-db --rest $PORT

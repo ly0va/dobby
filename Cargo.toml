@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
+# dobby daemon
 path = "src/bin/server.rs"
-name = "dobby-server"
+name = "dobbyd"
 
 [[bin]]
+# dobby cli
 path = "src/bin/client.rs"
 name = "dobby"
 
