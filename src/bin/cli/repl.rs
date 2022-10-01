@@ -4,7 +4,7 @@ use dobby::core::types::ColumnSet;
 use dobby::grpc::proto::database_client::DatabaseClient;
 
 use colored::Colorize;
-use prettytable::{csv, format::consts, Row, Table as PrettyTable};
+use prettytable::{csv, Row, Table as PrettyTable};
 use rustyline::Editor;
 use structopt::StructOpt;
 use tonic::{transport::Channel, Request};
@@ -30,11 +30,28 @@ impl Repl {
     }
 
     fn get_table(rows: &[ColumnSet]) -> PrettyTable {
+        use prettytable::format::{FormatBuilder, LinePosition, LineSeparator};
+
         let columns: Vec<String> = if let Some(first) = rows.first() {
             first.keys().cloned().collect()
         } else {
             return PrettyTable::new();
         };
+
+        let table_format = FormatBuilder::new()
+            .column_separator('│')
+            .borders('│')
+            .separators(&[LinePosition::Top], LineSeparator::new('─', '┬', '┌', '┐'))
+            .separators(
+                &[LinePosition::Title],
+                LineSeparator::new('─', '┼', '├', '┤'),
+            )
+            .separators(
+                &[LinePosition::Bottom],
+                LineSeparator::new('─', '┴', '└', '┘'),
+            )
+            .padding(1, 1)
+            .build();
 
         let mut table: PrettyTable = rows
             .iter()
@@ -42,7 +59,7 @@ impl Repl {
             .collect();
 
         table.set_titles(columns.iter().collect::<Row>());
-        table.set_format(*consts::FORMAT_NO_LINESEP_WITH_TITLE);
+        table.set_format(table_format);
         table
     }
 

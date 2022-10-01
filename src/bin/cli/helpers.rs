@@ -60,13 +60,20 @@ impl Hinter for DobbyHelper {
             return None;
         }
 
-        let last_word = line.split_whitespace().last().unwrap_or_default();
-        let mut hints = self.commands.iter().chain(self.flags.iter());
+        let words: Vec<_> = line.split_whitespace().collect();
+        let last_word = words[words.len() - 1];
+        let hints = if words.len() == 1 {
+            self.commands.iter()
+        } else {
+            self.flags.iter()
+        };
 
-        hints.find_map(|hint| {
-            hint.strip_prefix(last_word)
-                .map(|stripped| CommandHint(stripped.to_string()))
-        })
+        hints
+            .filter(|hint| !words.contains(&hint.as_str()))
+            .find_map(|hint| {
+                hint.strip_prefix(last_word)
+                    .map(|stripped| CommandHint(stripped.to_string()))
+            })
     }
 }
 
