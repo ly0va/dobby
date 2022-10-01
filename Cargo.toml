@@ -3,6 +3,14 @@ name = "dobby"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+path = "src/bin/server.rs"
+name = "dobby-server"
+
+[[bin]]
+path = "src/bin/client.rs"
+name = "dobby"
+
 [dependencies]
 structopt = "0.3"
 thiserror = "1.0"
