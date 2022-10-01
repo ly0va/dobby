@@ -27,7 +27,9 @@ impl service::Database for DatabaseService {
         let query = request.into_inner();
         let db = Arc::clone(&self.db);
         if let Some(query) = query.query {
-            match db.lock().unwrap().execute(query.into()) {
+            let query = query.into();
+            log::info!(target: "api::grpc", "Executing query: {:?}", &query);
+            match db.lock().unwrap().execute(query) {
                 Ok(result) => Ok(Response::new(result.into())),
                 Err(err) => Err(err.into()),
             }
@@ -42,10 +44,13 @@ pub async fn serve(
     address: impl Into<SocketAddr>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let service = DatabaseService { db };
+    let address = address.into();
+
+    log::info!(target: "api::grpc", "Starting gRPC server on {}", address);
 
     Server::builder()
         .add_service(DatabaseServer::new(service))
-        .serve(address.into())
+        .serve(address)
         .await?;
 
     Ok(())

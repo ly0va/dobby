@@ -21,6 +21,7 @@ struct Row {
     offset: u64,
 }
 
+// TODO: add cleanup (remove all deleted entries)
 impl Table {
     fn next_row(&mut self) -> Option<Result<Row, io::Error>> {
         let mut row = HashMap::new();
@@ -53,6 +54,7 @@ impl Table {
     }
 
     pub fn open(name: String, columns: Vec<(String, DataType)>, path: &Path) -> Self {
+        log::info!("Opening table `{}`", name);
         let file = OpenOptions::new()
             .read(true)
             .write(true)

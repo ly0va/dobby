@@ -26,6 +26,7 @@ struct Options {
 
 #[tokio::main]
 async fn main() {
+    pretty_env_logger::init();
     let options = Options::from_args();
 
     if options.grpc.is_none() && options.rest.is_none() {
@@ -53,9 +54,8 @@ async fn main() {
     tokio::select! {
         _ = async { grpc_server.unwrap().await }, if grpc_server.is_some() => {},
         _ = async { rest_server.unwrap().await }, if rest_server.is_some() => {},
-        _ = tokio::signal::ctrl_c() => { println!("\nShutting down...") },
+        _ = tokio::signal::ctrl_c() => {
+            log::info!(target: "dobby::server", "Shutting down...");
+        },
     };
-
-    // TODO: add logging
-    // TODO: add cleanup (remove all deleted entries)
 }

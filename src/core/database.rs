@@ -14,11 +14,16 @@ pub struct Database {
 
 impl Database {
     pub fn open(path: PathBuf) -> Self {
+        log::info!("Opening database at {:?}", path);
+        if !path.is_dir() {
+            panic!("Database not found at {:?}", path);
+        }
         let schema = Schema::load(&path);
         Database { tables: HashMap::new(), path, schema }
     }
 
     pub fn create(path: PathBuf, name: String) -> Self {
+        log::info!("Creating database {} at {:?}", name, path);
         if path.exists() {
             panic!("Path {} already occupied", path.display());
         }

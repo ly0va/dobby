@@ -121,6 +121,7 @@ pub async fn serve(db_itself: Arc<Mutex<Database>>, address: impl Into<SocketAdd
         .or(create)
         .or(alter)
         .or(schema)
+        .with(warp::log("api::rest"))
         .recover(handle_rejection);
 
     warp::serve(routes).run(address).await;

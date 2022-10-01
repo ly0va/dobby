@@ -21,6 +21,7 @@ impl Schema {
     }
 
     pub fn load(path: &Path) -> Schema {
+        log::info!("Loading schema...");
         let file = File::open(path.join(".schema")).expect("Schema file not found");
         let mut reader = io::BufReader::new(file).lines();
         let mut tables = HashMap::new();
@@ -46,6 +47,7 @@ impl Schema {
     }
 
     pub fn dump(&self, path: &Path) -> Result<(), io::Error> {
+        log::info!("Dumping schema...");
         let mut file = File::create(path.join(".schema"))?;
         file.write_all(self.name.as_bytes())?;
         file.write_all(b"\n")?;
