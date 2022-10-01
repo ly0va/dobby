@@ -9,7 +9,7 @@ use std::path::Path;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct Schema {
     pub tables: HashMap<String, Vec<(String, DataType)>>,
     name: String,

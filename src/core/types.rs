@@ -96,7 +96,7 @@ pub enum TypedValue {
     StringInvl(String, String),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Deserialize, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 #[repr(i32)]
 pub enum DataType {

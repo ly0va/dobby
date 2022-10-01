@@ -108,6 +108,11 @@ pub async fn serve(db_itself: Arc<Mutex<Database>>, address: impl Into<SocketAdd
             execute_on(db, Query::Alter { table, rename })
         });
 
+    let db = Arc::clone(&db_itself);
+    let schema = warp::get()
+        .and(warp::path::end())
+        .map(move || warp::reply::json(&db.lock().unwrap().schema));
+
     let routes = select
         .or(insert)
         .or(update)
@@ -115,6 +120,7 @@ pub async fn serve(db_itself: Arc<Mutex<Database>>, address: impl Into<SocketAdd
         .or(drop)
         .or(create)
         .or(alter)
+        .or(schema)
         .recover(handle_rejection);
 
     warp::serve(routes).run(address).await;

@@ -56,8 +56,6 @@ async fn main() {
         _ = tokio::signal::ctrl_c() => { println!("\nShutting down...") },
     };
 
-    // TODO: add my custom types
     // TODO: add logging
     // TODO: add cleanup (remove all deleted entries)
-    // TODO: return schemas as response to operations over tables
 }

@@ -9,7 +9,7 @@ use std::path::PathBuf;
 pub struct Database {
     tables: HashMap<String, Table>,
     path: PathBuf,
-    schema: Schema,
+    pub schema: Schema,
 }
 
 impl Database {
