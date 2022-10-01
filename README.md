@@ -21,8 +21,8 @@
 - :pencil: Renaming columns
 - :envelope: A modern REST API
 - :package: An even more modern gRPC API
-- :sparkles: A fancy CLI client :sparkles:
-- :rocket: Try `dobby` on [Heroku](http://not.yet)!
+- :sparkles: A fancy CLI client
+- :rocket: Try `dobby` on [Heroku](http://dobby.lyova.xyz)!
 - :computer: Cross-platform!
 - :zap: Blazingly fast
 
