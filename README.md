@@ -4,6 +4,8 @@
 [![heroku](https://heroku-badge.herokuapp.com/?app=do88y)](http://dobby.lyova.xyz)
 [![dependency status](https://deps.rs/repo/github/ly0va/dobby/status.svg)](https://deps.rs/repo/github/ly0va/dobby)
 
+<img align="right" width="125" height="125" src="./docs/img/dobby.svg">
+
 *A database engine as poor as a house elf*
 
 > **disclaimer**: this is a university project. Please don't jump to any conclusions when you see
@@ -46,23 +48,23 @@ You can read about each module in the [docs](./docs):
 
 **Build dependencies**: Rust 1.64+, Protobuf 3+
 
-```
+```bash
 # rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # protoc (ubuntu/debian)
-apt install -y protobuf-compiler
+$ apt install -y protobuf-compiler
 
 # protoc (arch)
-pacman -Ss protobuf
+$ pacman -Ss protobuf
 
 # protoc (macOS)
-brew install protobuf
+$ brew install protobuf
 ```
 
 Installing `dobby`:
 
-```
+```bash
 cargo install --bins --git https://github.com/ly0va/dobby
 ```
 
@@ -70,6 +72,6 @@ This provides two binaries, `dobbyd` (the daemon) and `dobby` (the client)
 
 ### Docker image
 
-```
+```bash
 docker pull ghcr.io/ly0va/dobby:master
 ```

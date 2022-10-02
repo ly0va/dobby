@@ -27,7 +27,7 @@ OPTIONS:
 
 To start the client, provide a gRPC server URL - either via the `--url` option or via `$DOBBY_URL` env variable:
 
-```
+```bash
 dobby -u http://dobby.lyova.xyz
 ```
 
