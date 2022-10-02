@@ -75,3 +75,7 @@ This provides two binaries, `dobbyd` (the daemon) and `dobby` (the client)
 ```bash
 docker pull ghcr.io/ly0va/dobby:master
 ```
+
+## Credits
+
+[Logo](https://thenounproject.com/icon/dobby-2210001/) created by [David S](https://thenounproject.com/david.o.s.16/) from The Noun Project.
