@@ -23,9 +23,9 @@ ARGS:
 
 Example usage that will run gRPC API on port 8080, serving a database at `./demo-db`:
 
-*Native*: `dobbyd --grpc 8080 ./demo-db`
+**Native**: `dobbyd --grpc 8080 ./demo-db`
 
-*Dockerized*: `docker run -v $PWD/demo-db:/demo-db -p 8080:8080 dobby:latest dobbyd --grpc 8080 ./demo-db`
+**Dockerized**: `docker run -v $PWD/demo-db:/demo-db -p 8080:8080 dobby:master dobbyd --grpc 8080 ./demo-db`
 
 To enable logging, set `$RUST_LOG` env variable to one of `error`/`warn`/`info`/`debug`/`trace`.
 

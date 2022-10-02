@@ -1,6 +1,7 @@
 # `dobby`
 
 ![ci](https://github.com/ly0va/dobby/actions/workflows/ci.yml/badge.svg)
+[![heroku](https://heroku-badge.herokuapp.com/?app=do88y)](http://dobby.lyova.xyz)
 [![dependency status](https://deps.rs/repo/github/ly0va/dobby/status.svg)](https://deps.rs/repo/github/ly0va/dobby)
 
 *A database engine as poor as a house elf*
@@ -41,9 +42,9 @@ You can read about each module in the [docs](./docs):
 
 ### Native installation
 
-> *note*: this guide is only applicable for Linux/MacOS users. If you use Windows... why?
+> **note**: this guide is only applicable for Linux/MacOS users. If you use Windows... why?
 
-*Build dependencies*: Rust 1.64+, Protobuf 3+
+**Build dependencies**: Rust 1.64+, Protobuf 3+
 
 ```
 # rust
@@ -70,5 +71,5 @@ This provides two binaries, `dobbyd` (the daemon) and `dobby` (the client)
 ### Docker image
 
 ```
-docker pull ghcr.io/ly0va/dobby
+docker pull ghcr.io/ly0va/dobby:master
 ```
