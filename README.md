@@ -32,7 +32,7 @@
 
 ## Details
 
-You can read about each module in the [docs](./docs):
+You can read about each module in the docs:
 
 - [Architechture](./docs/architecture.md)
 - [Server](./docs/server.md)

@@ -11,6 +11,10 @@ Advantages of having a REST API:
 
 You can view `dobby`'s REST server implementation [here](../src/rest.rs).
 
+`dobby` REST service is deployed on Heroku:
+- http://dobby.lyova.xyz
+- http://do88y.herokuapp.com
+
 Try it out using `curl`:
 
 ```bash
