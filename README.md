@@ -22,6 +22,7 @@
 - :envelope: A modern REST API
 - :package: An even more modern gRPC API
 - :sparkles: A fancy CLI client
+- :ledger: Logging
 - :rocket: Try `dobby` on [Heroku](http://dobby.lyova.xyz)!
 - :computer: Cross-platform!
 - :zap: Blazingly fast!
@@ -30,19 +31,44 @@
 
 You can read about each module in the [docs](./docs):
 
-- [Installation & usage](./docs/README.md)
 - [Architechture](./docs/architecture.md)
+- [Server](./docs/server.md)
 - [CLI client](./docs/cli.md)
 - [REST service](./docs/rest-api.md)
-- [gRPC serice](./docs/grpc-api.md)
+- [gRPC service](./docs/grpc-api.md)
 
-## Use-case diagram
+## Installation
 
-![use-case diagram](./docs/img/uc-diagram.png)
+### Native installation
 
-## Class diagram
+> *note*: this guide is only applicable for Linux/MacOS users. If you use Windows... why?
 
-![class diagram](./docs/img/class-diagram.png)
+*Build dependencies*: Rust 1.64+, Protobuf 3+
 
-> **note**: this doesn't even make sense, since Rust is not an OOP language,
-> but the university course I'm doing this for doesn't really care.
+```
+# rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# protoc (ubuntu/debian)
+apt install -y protobuf-compiler
+
+# protoc (arch)
+pacman -Ss protobuf
+
+# protoc (macOS)
+brew install protobuf
+```
+
+Installing `dobby`:
+
+```
+cargo install --bins --git https://github.com/ly0va/dobby
+```
+
+This provides two binaries, `dobbyd` (the daemon) and `dobby` (the client)
+
+### Docker image
+
+```
+docker pull ghcr.io/ly0va/dobby
+```

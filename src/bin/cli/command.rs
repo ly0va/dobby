@@ -9,10 +9,13 @@ pub enum Command {
     /// Read rows from the table
     #[structopt(setting = AppSettings::DisableVersion)]
     Select {
+        /// The table to read from
         #[structopt(short, long)]
         table: String,
+        /// The columns to read (table projection)
         #[structopt(short, long)]
         columns: Vec<String>,
+        /// The filter to apply to the rows, in the form of column=value
         #[structopt(short = "w", long = "where", parse(try_from_str = parse_key_val))]
         conditions: Vec<(String, TypedValue)>,
     },
@@ -20,8 +23,10 @@ pub enum Command {
     /// Insert a row into the table
     #[structopt(setting = AppSettings::DisableVersion)]
     Insert {
+        /// The table to insert into
         #[structopt(short, long)]
         table: String,
+        /// Space-separated values to insert, specified as column=value
         #[structopt(short, long, parse(try_from_str = parse_key_val))]
         values: Vec<(String, TypedValue)>,
     },
@@ -29,10 +34,13 @@ pub enum Command {
     /// Update rows in the table
     #[structopt(setting = AppSettings::DisableVersion)]
     Update {
+        /// The table to update
         #[structopt(short, long)]
         table: String,
+        /// The columns to update, specified as column=value
         #[structopt(short, long, parse(try_from_str = parse_key_val))]
         values: Vec<(String, TypedValue)>,
+        /// The filter to apply to the rows, in the form of column=value
         #[structopt(short = "w", long = "where", parse(try_from_str = parse_key_val))]
         conditions: Vec<(String, TypedValue)>,
     },
@@ -40,8 +48,10 @@ pub enum Command {
     /// Delete rows from the table
     #[structopt(setting = AppSettings::DisableVersion)]
     Delete {
+        /// The table to delete from
         #[structopt(short, long)]
         table: String,
+        /// The filter to apply to the rows, in the form of column=value
         #[structopt(short = "w", long = "where", parse(try_from_str = parse_key_val))]
         conditions: Vec<(String, TypedValue)>,
     },
@@ -49,6 +59,7 @@ pub enum Command {
     /// Drop the whole table
     #[structopt(setting = AppSettings::DisableVersion)]
     Drop {
+        /// The table to drop
         #[structopt(short, long)]
         table: String,
     },
@@ -56,8 +67,11 @@ pub enum Command {
     /// Create a new table
     #[structopt(setting = AppSettings::DisableVersion)]
     Create {
+        /// The name of the new table
         #[structopt(short, long)]
         table: String,
+        /// The columns to create, specified as column=type
+        /// where type is one of: int, float, char, string, char_invl, string_invl
         #[structopt(short, long, parse(try_from_str = parse_key_val))]
         columns: Vec<(String, DataType)>,
     },
@@ -65,8 +79,10 @@ pub enum Command {
     /// Rename columns in the table
     #[structopt(setting = AppSettings::DisableVersion)]
     Rename {
+        /// The table to rename columns in
         #[structopt(short, long)]
         table: String,
+        /// The columns to rename, specified as old=new
         #[structopt(short, long, parse(try_from_str = parse_key_val))]
         columns: Vec<(String, String)>,
     },
