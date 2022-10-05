@@ -65,6 +65,7 @@ impl Database {
             }
             Query::Drop { table } => {
                 self.table(&table)?.drop()?;
+                self.tables.remove(&table);
                 self.schema.drop_table(table).map(|_| vec![])
             }
             Query::Alter { table, rename } => {

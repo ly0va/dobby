@@ -101,7 +101,7 @@ impl Schema {
         mut rename: HashMap<String, String>,
     ) -> Result<(), DbError> {
         if let Entry::Occupied(mut entry) = self.tables.entry(table.clone()) {
-            let mut new_columns = HashMap::new();
+            let mut new_columns = Vec::new();
 
             for (column, data_type) in entry.get().iter() {
                 let new_column = if rename.contains_key(column) {
@@ -110,10 +110,10 @@ impl Schema {
                 } else {
                     column.clone()
                 };
-                if new_columns.contains_key(&new_column) {
+                if new_columns.iter().any(|(c, _)| c == &new_column) {
                     return Err(DbError::ColumnAlreadyExists(new_column, table));
                 }
-                new_columns.insert(new_column, *data_type);
+                new_columns.push((new_column, *data_type));
             }
 
             if !rename.is_empty() {
@@ -122,7 +122,7 @@ impl Schema {
                     table,
                 ))
             } else {
-                entry.insert(new_columns.into_iter().collect());
+                entry.insert(new_columns);
                 Ok(())
             }
         } else {
