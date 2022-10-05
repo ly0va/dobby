@@ -39,6 +39,7 @@ You can read about each module in the docs:
 - [CLI client](./docs/cli.md)
 - [REST service](./docs/rest-api.md)
 - [gRPC service](./docs/grpc-api.md)
+- [Testing](./docs/testing.md)
 
 ## Installation
 
@@ -46,7 +47,7 @@ You can read about each module in the docs:
 
 > **note**: this guide is only applicable for Linux/MacOS users. If you use Windows... why?
 
-**Build dependencies**: Rust 1.64+, Protobuf 3+
+**Build dependencies**: Rust 1.56+, Protobuf 3+
 
 ```bash
 # rust
@@ -62,10 +63,18 @@ $ pacman -Ss protobuf
 $ brew install protobuf
 ```
 
-Installing `dobby`:
+Installing `dobby` via cargo:
 
 ```bash
 cargo install --bins --git https://github.com/ly0va/dobby
+```
+
+Or building from source:
+
+```bash
+$ git clone https://github.com/ly0va/dobby
+$ cd dobby
+$ cargo build
 ```
 
 This provides two binaries, `dobbyd` (the daemon) and `dobby` (the client)
