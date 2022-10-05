@@ -1,7 +1,6 @@
 # `dobby`
 
 ![ci](https://github.com/ly0va/dobby/actions/workflows/ci.yml/badge.svg)
-[![heroku](https://heroku-badge.herokuapp.com/?app=do88y)](http://dobby.lyova.xyz)
 [![dependency status](https://deps.rs/repo/github/ly0va/dobby/status.svg)](https://deps.rs/repo/github/ly0va/dobby)
 
 <img align="right" width="125" height="125" src="./docs/img/dobby.svg">
