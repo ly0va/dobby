@@ -32,7 +32,7 @@ impl Database {
         Database { tables: HashMap::new(), path, schema }
     }
 
-    pub fn table(&mut self, name: &str) -> Result<&mut Table, DbError> {
+    fn table(&mut self, name: &str) -> Result<&mut Table, DbError> {
         if !self.schema.tables.contains_key(name) {
             return Err(DbError::TableNotFound(name.to_string()));
         }
@@ -46,6 +46,12 @@ impl Database {
         Ok(self.tables.get_mut(name).unwrap())
     }
 
+    fn update_colunms(&mut self, table: String) {
+        self.tables
+            .entry(table.clone())
+            .and_modify(|e| e.columns = self.schema.tables[&table].clone());
+    }
+
     pub fn execute(&mut self, query: Query) -> Result<Vec<ColumnSet>, DbError> {
         match query {
             Query::Select { from, columns, conditions } => {
@@ -57,9 +63,14 @@ impl Database {
             Query::Create { table, columns } => {
                 self.schema.create_table(table, columns).map(|_| vec![])
             }
-            Query::Drop { table } => self.schema.drop_table(table).map(|_| vec![]),
+            Query::Drop { table } => {
+                self.table(&table)?.drop()?;
+                self.schema.drop_table(table).map(|_| vec![])
+            }
             Query::Alter { table, rename } => {
-                self.schema.alter_table(table, rename).map(|_| vec![])
+                self.schema.alter_table(table.clone(), rename)?;
+                self.update_colunms(table);
+                Ok(vec![])
             }
         }
     }

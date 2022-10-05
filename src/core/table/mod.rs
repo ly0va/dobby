@@ -196,4 +196,8 @@ impl Table {
         }
         Ok(deleted)
     }
+
+    pub fn drop(&mut self) -> Result<(), DbError> {
+        self.file.set_len(0).map_err(DbError::IoError)
+    }
 }

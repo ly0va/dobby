@@ -1,7 +1,7 @@
 use super::types::DataType;
 use super::types::DbError;
 
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap};
 use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::path::Path;
@@ -101,23 +101,28 @@ impl Schema {
         mut rename: HashMap<String, String>,
     ) -> Result<(), DbError> {
         if let Entry::Occupied(mut entry) = self.tables.entry(table.clone()) {
-            let mut names = HashSet::new();
-            for (column, _) in entry.get_mut().iter_mut() {
-                if rename.contains_key(column) {
+            let mut new_columns = HashMap::new();
+
+            for (column, data_type) in entry.get().iter() {
+                let new_column = if rename.contains_key(column) {
                     Self::validate_name(&rename[column])?;
-                    if names.contains(&rename[column]) {
-                        return Err(DbError::ColumnAlreadyExists(rename[column].clone(), table));
-                    }
-                    *column = rename.remove(column).unwrap();
+                    rename.remove(column).unwrap()
+                } else {
+                    column.clone()
+                };
+                if new_columns.contains_key(&new_column) {
+                    return Err(DbError::ColumnAlreadyExists(new_column, table));
                 }
-                names.insert(column.clone());
+                new_columns.insert(new_column, *data_type);
             }
+
             if !rename.is_empty() {
                 Err(DbError::ColumnNotFound(
                     rename.keys().next().unwrap().clone(),
                     table,
                 ))
             } else {
+                entry.insert(new_columns.into_iter().collect());
                 Ok(())
             }
         } else {
