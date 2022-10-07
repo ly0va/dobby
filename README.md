@@ -56,7 +56,7 @@ $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 $ apt install -y protobuf-compiler
 
 # protoc (arch)
-$ pacman -Ss protobuf
+$ pacman -S protobuf
 
 # protoc (macOS)
 $ brew install protobuf
