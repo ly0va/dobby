@@ -8,7 +8,7 @@ use thiserror::Error;
 pub type ColumnSet = HashMap<String, TypedValue>;
 
 #[derive(Debug, Error)]
-pub enum DbError {
+pub enum DobbyError {
     #[error("Table {0} already exists")]
     TableAlreadyExists(String),
 
@@ -43,7 +43,7 @@ pub enum DbError {
     IoError(#[from] std::io::Error),
 }
 
-impl Serialize for DbError {
+impl Serialize for DobbyError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -109,16 +109,16 @@ pub enum DataType {
 }
 
 impl TypedValue {
-    pub fn validate(&self) -> Result<(), DbError> {
+    pub fn validate(&self) -> Result<(), DobbyError> {
         match self {
             TypedValue::CharInvl(c1, c2) => {
                 if c1 > c2 {
-                    return Err(DbError::InvalidRange(c1.to_string(), c2.to_string()));
+                    return Err(DobbyError::InvalidRange(c1.to_string(), c2.to_string()));
                 }
             }
             TypedValue::StringInvl(s1, s2) => {
                 if s1 > s2 {
-                    return Err(DbError::InvalidRange(s1.to_string(), s2.to_string()));
+                    return Err(DobbyError::InvalidRange(s1.to_string(), s2.to_string()));
                 }
             }
             _ => {}
@@ -191,12 +191,12 @@ impl TypedValue {
         }
     }
 
-    pub fn coerce(self, to: DataType) -> Result<Self, DbError> {
+    pub fn coerce(self, to: DataType) -> Result<Self, DobbyError> {
         let string_to_char = |s: &str| {
             if s.len() == 1 {
                 Ok(s.chars().next().unwrap())
             } else {
-                Err(DbError::InvalidValue(self.clone(), to))
+                Err(DobbyError::InvalidValue(self.clone(), to))
             }
         };
 
@@ -209,16 +209,16 @@ impl TypedValue {
             (TypedValue::String(s), DataType::Int) => s
                 .parse::<i64>()
                 .map(TypedValue::Int)
-                .map_err(|_| DbError::InvalidValue(self, to)),
+                .map_err(|_| DobbyError::InvalidValue(self, to)),
             (TypedValue::String(s), DataType::Float) => s
                 .parse::<f64>()
                 .map(TypedValue::Float)
-                .map_err(|_| DbError::InvalidValue(self, to)),
+                .map_err(|_| DobbyError::InvalidValue(self, to)),
             (TypedValue::String(s), DataType::StringInvl) => {
                 if let Some((s1, s2)) = s.split_once("..") {
                     Ok(TypedValue::StringInvl(s1.to_string(), s2.to_string()))
                 } else {
-                    Err(DbError::InvalidValue(self, to))
+                    Err(DobbyError::InvalidValue(self, to))
                 }
             }
             (TypedValue::String(s), DataType::CharInvl) => {
@@ -228,7 +228,7 @@ impl TypedValue {
                         string_to_char(s2)?,
                     ))
                 } else {
-                    Err(DbError::InvalidValue(self, to))
+                    Err(DobbyError::InvalidValue(self, to))
                 }
             }
 
@@ -237,19 +237,19 @@ impl TypedValue {
                 .to_string()
                 .parse::<i64>()
                 .map(TypedValue::Int)
-                .map_err(|_| DbError::InvalidValue(self, to)),
+                .map_err(|_| DobbyError::InvalidValue(self, to)),
             (TypedValue::Char(c), DataType::Float) => c
                 .to_string()
                 .parse::<f64>()
                 .map(TypedValue::Float)
-                .map_err(|_| DbError::InvalidValue(self, to)),
+                .map_err(|_| DobbyError::InvalidValue(self, to)),
 
             (TypedValue::Int(i), DataType::Float) => Ok(TypedValue::Float(*i as f64)),
             (TypedValue::StringInvl(s1, s2), DataType::CharInvl) => Ok(TypedValue::CharInvl(
                 string_to_char(s1)?,
                 string_to_char(s2)?,
             )),
-            (v, _) => Err(DbError::InvalidValue(v.clone(), to)),
+            (v, _) => Err(DobbyError::InvalidValue(v.clone(), to)),
         }
     }
 }
@@ -311,7 +311,7 @@ impl fmt::Debug for DataType {
 }
 
 impl TryFrom<&str> for DataType {
-    type Error = DbError;
+    type Error = DobbyError;
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
@@ -321,7 +321,7 @@ impl TryFrom<&str> for DataType {
             "string" => Ok(DataType::String),
             "char_invl" => Ok(DataType::CharInvl),
             "string_invl" => Ok(DataType::StringInvl),
-            _ => Err(DbError::InvalidDataType(s.to_string())),
+            _ => Err(DobbyError::InvalidDataType(s.to_string())),
         }
     }
 }

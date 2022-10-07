@@ -1,4 +1,4 @@
-use dobby::{core::Database, grpc, rest};
+use dobby::{core::Dobby, grpc, rest};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
@@ -35,9 +35,9 @@ async fn main() {
 
     let db = {
         let db = if let Some(name) = options.new {
-            Database::create(options.path, name)
+            Dobby::create(options.path, name)
         } else {
-            Database::open(options.path)
+            Dobby::open(options.path)
         };
         // TODO: maybe better to use one mutex per table instead of a global one?
         Arc::new(Mutex::new(db))

@@ -1,25 +1,25 @@
 use super::schema::Schema;
 use super::table::Table;
-use super::types::{ColumnSet, DbError, Query};
+use super::types::{ColumnSet, DobbyError, Query};
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug)]
-pub struct Database {
+pub struct Dobby {
     tables: HashMap<String, Table>,
     path: PathBuf,
     pub schema: Schema,
 }
 
-impl Database {
+impl Dobby {
     pub fn open(path: PathBuf) -> Self {
         log::info!("Opening database at {:?}", path);
         if !path.is_dir() {
             panic!("Database not found at {:?}", path);
         }
         let schema = Schema::load(&path);
-        Database { tables: HashMap::new(), path, schema }
+        Dobby { tables: HashMap::new(), path, schema }
     }
 
     pub fn create(path: PathBuf, name: String) -> Self {
@@ -29,12 +29,12 @@ impl Database {
         }
         std::fs::create_dir_all(&path).expect("Failed to create database directory");
         let schema = Schema::new(name);
-        Database { tables: HashMap::new(), path, schema }
+        Dobby { tables: HashMap::new(), path, schema }
     }
 
-    fn table(&mut self, name: &str) -> Result<&mut Table, DbError> {
+    fn table(&mut self, name: &str) -> Result<&mut Table, DobbyError> {
         if !self.schema.tables.contains_key(name) {
-            return Err(DbError::TableNotFound(name.to_string()));
+            return Err(DobbyError::TableNotFound(name.to_string()));
         }
 
         if !self.tables.contains_key(name) {
@@ -52,7 +52,7 @@ impl Database {
             .and_modify(|e| e.columns = self.schema.tables[&table].clone());
     }
 
-    pub fn execute(&mut self, query: Query) -> Result<Vec<ColumnSet>, DbError> {
+    pub fn execute(&mut self, query: Query) -> Result<Vec<ColumnSet>, DobbyError> {
         match query {
             Query::Select { from, columns, conditions } => {
                 self.table(&from)?.select(columns, conditions)
@@ -77,7 +77,7 @@ impl Database {
     }
 }
 
-impl Drop for Database {
+impl Drop for Dobby {
     fn drop(&mut self) {
         self.schema
             .dump(&self.path)

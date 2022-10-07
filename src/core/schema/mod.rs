@@ -1,5 +1,5 @@
 use super::types::DataType;
-use super::types::DbError;
+use super::types::DobbyError;
 
 use std::collections::{hash_map::Entry, HashMap};
 use std::fs::File;
@@ -66,32 +66,32 @@ impl Schema {
         &mut self,
         name: String,
         mut columns: Vec<(String, DataType)>,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), DobbyError> {
         Self::validate_name(&name)?;
         if columns.is_empty() {
-            return Err(DbError::NoColumns);
+            return Err(DobbyError::NoColumns);
         }
         if let Entry::Vacant(entry) = self.tables.entry(name.clone()) {
             columns.sort();
             for (i, (column, _)) in columns.iter().enumerate() {
                 Self::validate_name(column)?;
                 if i > 0 && column == &columns[i - 1].0 {
-                    return Err(DbError::ColumnAlreadyExists(column.clone(), name));
+                    return Err(DobbyError::ColumnAlreadyExists(column.clone(), name));
                 }
             }
             entry.insert(columns);
             Ok(())
         } else {
-            Err(DbError::TableAlreadyExists(name))
+            Err(DobbyError::TableAlreadyExists(name))
         }
     }
 
-    pub fn drop_table(&mut self, name: String) -> Result<(), DbError> {
+    pub fn drop_table(&mut self, name: String) -> Result<(), DobbyError> {
         if let Entry::Occupied(entry) = self.tables.entry(name.clone()) {
             entry.remove();
             Ok(())
         } else {
-            Err(DbError::TableNotFound(name))
+            Err(DobbyError::TableNotFound(name))
         }
     }
 
@@ -99,7 +99,7 @@ impl Schema {
         &mut self,
         table: String,
         mut rename: HashMap<String, String>,
-    ) -> Result<(), DbError> {
+    ) -> Result<(), DobbyError> {
         if let Entry::Occupied(mut entry) = self.tables.entry(table.clone()) {
             let mut new_columns = Vec::new();
 
@@ -111,13 +111,13 @@ impl Schema {
                     column.clone()
                 };
                 if new_columns.iter().any(|(c, _)| c == &new_column) {
-                    return Err(DbError::ColumnAlreadyExists(new_column, table));
+                    return Err(DobbyError::ColumnAlreadyExists(new_column, table));
                 }
                 new_columns.push((new_column, *data_type));
             }
 
             if !rename.is_empty() {
-                Err(DbError::ColumnNotFound(
+                Err(DobbyError::ColumnNotFound(
                     rename.keys().next().unwrap().clone(),
                     table,
                 ))
@@ -126,15 +126,15 @@ impl Schema {
                 Ok(())
             }
         } else {
-            Err(DbError::TableNotFound(table))
+            Err(DobbyError::TableNotFound(table))
         }
     }
 
-    fn validate_name(name: &str) -> Result<(), DbError> {
+    fn validate_name(name: &str) -> Result<(), DobbyError> {
         if name.chars().all(|c| c.is_alphanumeric() || c == '_') {
             Ok(())
         } else {
-            Err(DbError::InvalidName(name.to_string()))
+            Err(DobbyError::InvalidName(name.to_string()))
         }
     }
 }

@@ -12,7 +12,7 @@ fn table() -> Table {
 }
 
 #[test]
-fn select() -> Result<(), DbError> {
+fn select() -> Result<(), DobbyError> {
     let mut table = table();
     let row: HashMap<_, _> = [
         ("id".into(), TypedValue::Int(1)),
@@ -30,7 +30,7 @@ fn select() -> Result<(), DbError> {
 }
 
 #[test]
-fn project() -> Result<(), DbError> {
+fn project() -> Result<(), DobbyError> {
     let mut table = table();
     let mut row: HashMap<_, _> = [
         ("id".into(), TypedValue::Int(1)),
@@ -50,7 +50,7 @@ fn project() -> Result<(), DbError> {
 }
 
 #[test]
-fn filter() -> Result<(), DbError> {
+fn filter() -> Result<(), DobbyError> {
     let mut table = table();
     let row: HashMap<_, _> = [
         ("id".into(), TypedValue::Int(1)),
@@ -76,7 +76,7 @@ fn filter() -> Result<(), DbError> {
 }
 
 #[test]
-fn update() -> Result<(), DbError> {
+fn update() -> Result<(), DobbyError> {
     let mut table = table();
     let row: HashMap<_, _> = [
         ("id".into(), TypedValue::Int(1)),
@@ -98,7 +98,7 @@ fn update() -> Result<(), DbError> {
 }
 
 #[test]
-fn delete() -> Result<(), DbError> {
+fn delete() -> Result<(), DobbyError> {
     let mut table = table();
     let row: HashMap<_, _> = [
         ("id".into(), TypedValue::Int(1)),

@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn create() -> Result<(), DbError> {
+fn create() -> Result<(), DobbyError> {
     let mut schema = Schema::default();
     let table_schema = vec![("column".into(), DataType::String)];
 
@@ -13,7 +13,7 @@ fn create() -> Result<(), DbError> {
 }
 
 #[test]
-fn drop() -> Result<(), DbError> {
+fn drop() -> Result<(), DobbyError> {
     let mut schema = Schema::default();
     let table_schema = vec![("column".into(), DataType::String)];
 
@@ -25,7 +25,7 @@ fn drop() -> Result<(), DbError> {
 }
 
 #[test]
-fn alter() -> Result<(), DbError> {
+fn alter() -> Result<(), DobbyError> {
     let mut schema = Schema::default();
     let table_schema = vec![("column".into(), DataType::String)];
 

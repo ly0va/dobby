@@ -1,5 +1,5 @@
-use crate::core::types::{ColumnSet, DataType, DbError, Query};
-use crate::core::Database;
+use crate::core::types::{ColumnSet, DataType, DobbyError, Query};
+use crate::core::Dobby;
 
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -9,27 +9,27 @@ use std::sync::{Arc, Mutex};
 use warp::http::StatusCode;
 use warp::Filter;
 
-impl warp::reject::Reject for DbError {}
+impl warp::reject::Reject for DobbyError {}
 
-impl DbError {
+impl DobbyError {
     pub fn status_code(&self) -> StatusCode {
         match self {
-            DbError::TableAlreadyExists(_) => StatusCode::CONFLICT,
-            DbError::TableNotFound(_) => StatusCode::NOT_FOUND,
-            DbError::ColumnAlreadyExists(_, _) => StatusCode::CONFLICT,
-            DbError::ColumnNotFound(_, _) => StatusCode::NOT_FOUND,
-            DbError::NoColumns => StatusCode::BAD_REQUEST,
-            DbError::InvalidName(_) => StatusCode::BAD_REQUEST,
-            DbError::InvalidValue(_, _) => StatusCode::BAD_REQUEST,
-            DbError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,
-            DbError::InvalidDataType(_) => StatusCode::BAD_REQUEST,
-            DbError::InvalidRange(_, _) => StatusCode::BAD_REQUEST,
-            DbError::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            DobbyError::TableAlreadyExists(_) => StatusCode::CONFLICT,
+            DobbyError::TableNotFound(_) => StatusCode::NOT_FOUND,
+            DobbyError::ColumnAlreadyExists(_, _) => StatusCode::CONFLICT,
+            DobbyError::ColumnNotFound(_, _) => StatusCode::NOT_FOUND,
+            DobbyError::NoColumns => StatusCode::BAD_REQUEST,
+            DobbyError::InvalidName(_) => StatusCode::BAD_REQUEST,
+            DobbyError::InvalidValue(_, _) => StatusCode::BAD_REQUEST,
+            DobbyError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,
+            DobbyError::InvalidDataType(_) => StatusCode::BAD_REQUEST,
+            DobbyError::InvalidRange(_, _) => StatusCode::BAD_REQUEST,
+            DobbyError::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
 
-pub async fn serve(db_itself: Arc<Mutex<Database>>, address: impl Into<SocketAddr>) {
+pub async fn serve(db_itself: Arc<Mutex<Dobby>>, address: impl Into<SocketAddr>) {
     let db = Arc::clone(&db_itself);
     let select = warp::get()
         .and(warp::path::param())
@@ -128,7 +128,7 @@ pub async fn serve(db_itself: Arc<Mutex<Database>>, address: impl Into<SocketAdd
 }
 
 async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infallible> {
-    if let Some(error) = err.find::<DbError>() {
+    if let Some(error) = err.find::<DobbyError>() {
         Ok(warp::reply::with_status(
             warp::reply::json(&error),
             error.status_code(),
@@ -142,7 +142,7 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infa
 }
 
 async fn execute_on(
-    db: Arc<Mutex<Database>>,
+    db: Arc<Mutex<Dobby>>,
     query: Query,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let result = db.lock().unwrap().execute(query)?;
