@@ -18,15 +18,15 @@ struct Options {
     #[structopt(long, name = "name")]
     new: Option<String>,
 
-    /// run gRPC server on <port>
+    /// Run gRPC server on <port>
     #[structopt(long, name = "grpc-port")]
     grpc: Option<u16>,
 
-    /// run REST server on <port>
+    /// Run REST server on <port>
     #[structopt(long, name = "rest-port")]
     rest: Option<u16>,
 
-    /// use sqlite as the backend
+    /// Use sqlite as the backend
     #[structopt(long)]
     sqlite: bool,
 }

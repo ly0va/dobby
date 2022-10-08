@@ -10,12 +10,13 @@ USAGE:
 
 FLAGS:
     -h, --help       Prints help information
+        --sqlite     Use sqlite as the backend
     -V, --version    Prints version information
 
 OPTIONS:
-        --grpc <grpc-port>    run gRPC server on <port>
+        --grpc <grpc-port>    Run gRPC server on <port>
         --new <name>          Creates a new database called <name>
-        --rest <rest-port>    run REST server on <port>
+        --rest <rest-port>    Run REST server on <port>
 
 ARGS:
     <path>    Path to the database directory

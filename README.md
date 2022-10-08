@@ -25,6 +25,7 @@
 - :package: An even more modern gRPC API
 - :sparkles: A fancy CLI client
 - :ledger: Logging
+- :feather: Optional [SQLite](sqlite.org) back-end
 - :rocket: Try `dobby` on [Heroku](http://dobby.lyova.xyz)!
 - :computer: Cross-platform!
 - :zap: Blazingly fast!
@@ -38,6 +39,7 @@ You can read about each module in the docs:
 - [CLI client](./docs/cli.md)
 - [REST service](./docs/rest-api.md)
 - [gRPC service](./docs/grpc-api.md)
+- [SQLite mode](./docs/sqlite.md)
 - [Testing](./docs/testing.md)
 
 ## Installation
