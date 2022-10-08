@@ -41,6 +41,9 @@ pub enum DobbyError {
 
     #[error("IO Error")]
     IoError(#[from] std::io::Error),
+
+    #[error("SQL Error")]
+    SqlError(#[from] rusqlite::Error),
 }
 
 impl Serialize for DobbyError {
@@ -106,6 +109,19 @@ pub enum DataType {
     String,
     CharInvl,
     StringInvl,
+}
+
+impl rusqlite::ToSql for TypedValue {
+    fn to_sql(&self) -> Result<rusqlite::types::ToSqlOutput<'_>, rusqlite::Error> {
+        match self {
+            TypedValue::Int(i) => i.to_sql(),
+            TypedValue::Float(f) => f.to_sql(),
+            TypedValue::String(s) => s.to_sql(),
+            _ => Err(rusqlite::Error::ToSqlConversionFailure(Box::new(
+                DobbyError::InvalidValue(self.clone(), DataType::Int),
+            ))),
+        }
+    }
 }
 
 impl TypedValue {
@@ -336,6 +352,16 @@ impl From<i32> for DataType {
             4 => DataType::CharInvl,
             5 => DataType::StringInvl,
             _ => unreachable!("Invalid data type"),
+        }
+    }
+}
+
+impl DataType {
+    pub fn to_sql(&self) -> String {
+        match self {
+            DataType::Int => "INTEGER".to_string(),
+            DataType::Float => "REAL".to_string(),
+            _ => "TEXT".to_string(),
         }
     }
 }

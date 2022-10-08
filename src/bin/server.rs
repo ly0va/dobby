@@ -1,4 +1,7 @@
-use dobby::{core::Dobby, grpc, rest};
+use dobby::{
+    core::{Database, Dobby, Sqlite},
+    grpc, rest,
+};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
@@ -22,6 +25,10 @@ struct Options {
     /// run REST server on <port>
     #[structopt(long, name = "rest-port")]
     rest: Option<u16>,
+
+    /// use sqlite as the backend
+    #[structopt(long)]
+    sqlite: bool,
 }
 
 #[tokio::main]
@@ -40,7 +47,7 @@ async fn main() {
             Dobby::open(options.path)
         };
         // TODO: maybe better to use one mutex per table instead of a global one?
-        Arc::new(Mutex::new(db))
+        Arc::new(Mutex::new(db)) as Arc<dyn Database>
     };
 
     let grpc_server = options

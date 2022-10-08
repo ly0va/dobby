@@ -3,4 +3,4 @@ pub mod schema;
 pub mod table;
 pub mod types;
 
-pub use database::Dobby;
+pub use database::{dobby::Dobby, sqlite::Sqlite, Database};

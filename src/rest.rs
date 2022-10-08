@@ -1,5 +1,5 @@
 use crate::core::types::{ColumnSet, DataType, DobbyError, Query};
-use crate::core::Dobby;
+use crate::core::Database;
 
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -24,12 +24,13 @@ impl DobbyError {
             DobbyError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,
             DobbyError::InvalidDataType(_) => StatusCode::BAD_REQUEST,
             DobbyError::InvalidRange(_, _) => StatusCode::BAD_REQUEST,
+            DobbyError::SqlError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             DobbyError::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
 
-pub async fn serve(db_itself: Arc<Mutex<Dobby>>, address: impl Into<SocketAddr>) {
+pub async fn serve(db_itself: Arc<dyn Database>, address: impl Into<SocketAddr>) {
     let db = Arc::clone(&db_itself);
     let select = warp::get()
         .and(warp::path::param())
@@ -108,10 +109,10 @@ pub async fn serve(db_itself: Arc<Mutex<Dobby>>, address: impl Into<SocketAddr>)
             execute_on(db, Query::Alter { table, rename })
         });
 
-    let db = Arc::clone(&db_itself);
-    let schema = warp::get()
-        .and(warp::path::end())
-        .map(move || warp::reply::json(&db.lock().unwrap().schema));
+    // let db = Arc::clone(&db_itself);
+    // let schema = warp::get()
+    //     .and(warp::path::end())
+    //     .map(move || warp::reply::json(&db.lock().unwrap().schema));
 
     let routes = select
         .or(insert)
@@ -120,7 +121,7 @@ pub async fn serve(db_itself: Arc<Mutex<Dobby>>, address: impl Into<SocketAddr>)
         .or(drop)
         .or(create)
         .or(alter)
-        .or(schema)
+        // .or(schema)
         .with(warp::log("api::rest"))
         .recover(handle_rejection);
 
@@ -142,9 +143,9 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, Infa
 }
 
 async fn execute_on(
-    db: Arc<Mutex<Dobby>>,
+    db: Arc<dyn Database>,
     query: Query,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    let result = db.lock().unwrap().execute(query)?;
+    let result = db.execute(query)?;
     Ok(warp::reply::json(&result))
 }

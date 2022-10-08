@@ -3,7 +3,7 @@ use proto::{query, typed_value};
 use tonic::{transport::Server, Request, Response, Status};
 
 use crate::core::types::{ColumnSet, DobbyError, Query, TypedValue};
-use crate::core::Dobby;
+use crate::core::Database;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -15,7 +15,7 @@ pub mod proto {
 }
 
 pub struct DatabaseService {
-    db: Arc<Mutex<Dobby>>,
+    db: Arc<dyn Database>,
 }
 
 #[tonic::async_trait]
@@ -29,7 +29,7 @@ impl service::Database for DatabaseService {
         if let Some(query) = query.query {
             let query = query.into();
             log::info!(target: "api::grpc", "Executing query: {:?}", &query);
-            match db.lock().unwrap().execute(query) {
+            match db.execute(query) {
                 Ok(result) => Ok(Response::new(result.into())),
                 Err(err) => Err(err.into()),
             }
@@ -40,7 +40,7 @@ impl service::Database for DatabaseService {
 }
 
 pub async fn serve(
-    db: Arc<Mutex<Dobby>>,
+    db: Arc<dyn Database>,
     address: impl Into<SocketAddr>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let service = DatabaseService { db };
@@ -69,6 +69,7 @@ impl From<DobbyError> for Status {
             DobbyError::InvalidDataType(_) => Status::invalid_argument(err.to_string()),
             DobbyError::IncompleteData(_, _) => Status::invalid_argument(err.to_string()),
             DobbyError::InvalidRange(_, _) => Status::invalid_argument(err.to_string()),
+            DobbyError::SqlError(_) => Status::internal(err.to_string()),
             DobbyError::IoError(_) => Status::internal(err.to_string()),
         }
     }

@@ -52,11 +52,11 @@ impl Schema {
         file.write_all(self.name.as_bytes())?;
         file.write_all(b"\n")?;
         for (table, columns) in &self.tables {
-            let mut table_schema: String = columns
+            let table_schema: String = columns
                 .iter()
-                .map(|(column, data_type)| format!("{}:{:?},", column, data_type))
-                .collect();
-            table_schema.pop();
+                .map(|(column, data_type)| format!("{}:{:?}", column, data_type))
+                .collect::<Vec<_>>()
+                .join(",");
             file.write_all(format!("{}#{}\n", table, table_schema).as_bytes())?;
         }
         Ok(())
