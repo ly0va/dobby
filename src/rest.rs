@@ -4,7 +4,7 @@ use crate::core::Database;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use warp::http::StatusCode;
 use warp::Filter;
@@ -24,7 +24,7 @@ impl DobbyError {
             DobbyError::IncompleteData(_, _) => StatusCode::BAD_REQUEST,
             DobbyError::InvalidDataType(_) => StatusCode::BAD_REQUEST,
             DobbyError::InvalidRange(_, _) => StatusCode::BAD_REQUEST,
-            DobbyError::SqlError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            DobbyError::SqlError(_) => StatusCode::BAD_REQUEST,
             DobbyError::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -109,10 +109,10 @@ pub async fn serve(db_itself: Arc<dyn Database>, address: impl Into<SocketAddr>)
             execute_on(db, Query::Alter { table, rename })
         });
 
-    // let db = Arc::clone(&db_itself);
-    // let schema = warp::get()
-    //     .and(warp::path::end())
-    //     .map(move || warp::reply::json(&db.lock().unwrap().schema));
+    let db = Arc::clone(&db_itself);
+    let schema = warp::get()
+        .and(warp::path::end())
+        .map(move || warp::reply::json(&db.schema()));
 
     let routes = select
         .or(insert)
@@ -121,7 +121,7 @@ pub async fn serve(db_itself: Arc<dyn Database>, address: impl Into<SocketAddr>)
         .or(drop)
         .or(create)
         .or(alter)
-        // .or(schema)
+        .or(schema)
         .with(warp::log("api::rest"))
         .recover(handle_rejection);
 

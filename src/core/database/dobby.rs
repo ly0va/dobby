@@ -8,8 +8,8 @@ use crate::core::types::{ColumnSet, DobbyError, Query};
 #[derive(Debug)]
 pub struct Dobby {
     tables: HashMap<String, Table>,
-    schema: Schema,
     path: PathBuf,
+    pub schema: Schema,
 }
 
 impl Dobby {
@@ -36,19 +36,15 @@ impl Dobby {
             }
         }
     }
-}
 
-impl Dobby {
     pub fn open(path: PathBuf) -> Self {
         log::info!("Opening database at {:?}", path);
         if !path.is_dir() {
             panic!("Database not found at {:?}", path);
         }
-        Dobby {
-            tables: HashMap::new(),
-            schema: Schema::load(&path),
-            path,
-        }
+        let schema = Schema::load(&path);
+        assert!(schema.is_dobby(), "Wrong schema type");
+        Dobby { tables: HashMap::new(), schema, path }
     }
 
     pub fn create(path: PathBuf, name: String) -> Self {
@@ -57,12 +53,14 @@ impl Dobby {
             panic!("Path {} already occupied", path.display());
         }
         std::fs::create_dir_all(&path).expect("Failed to create database directory");
+
         Dobby {
             tables: HashMap::new(),
-            schema: Schema::new(name),
+            schema: Schema::new_dobby(name),
             path,
         }
     }
+
     fn table(&mut self, name: &str) -> Result<&mut Table, DobbyError> {
         if !self.schema.tables.contains_key(name) {
             return Err(DobbyError::TableNotFound(name.to_string()));
@@ -81,5 +79,11 @@ impl Dobby {
         self.tables
             .entry(table.clone())
             .and_modify(|e| e.columns = self.schema.tables[&table].clone());
+    }
+}
+
+impl Drop for Dobby {
+    fn drop(&mut self) {
+        self.schema.dump(&self.path).expect("Failed to dump schema");
     }
 }

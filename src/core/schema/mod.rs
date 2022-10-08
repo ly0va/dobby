@@ -9,15 +9,43 @@ use std::path::Path;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Clone, Default, serde::Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+enum SchemaKind {
+    Dobby,
+    Sqlite,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct Schema {
     pub tables: HashMap<String, Vec<(String, DataType)>>,
     name: String,
+    kind: SchemaKind,
 }
 
 impl Schema {
-    pub fn new(name: String) -> Self {
-        Schema { tables: HashMap::new(), name }
+    pub fn new_sqlite(name: String) -> Self {
+        Schema {
+            tables: HashMap::new(),
+            name,
+            kind: SchemaKind::Sqlite,
+        }
+    }
+
+    pub fn new_dobby(name: String) -> Self {
+        Schema {
+            tables: HashMap::new(),
+            name,
+            kind: SchemaKind::Dobby,
+        }
+    }
+
+    pub fn is_sqlite(&self) -> bool {
+        self.kind == SchemaKind::Sqlite
+    }
+
+    pub fn is_dobby(&self) -> bool {
+        self.kind == SchemaKind::Dobby
     }
 
     pub fn load(path: &Path) -> Schema {
@@ -25,10 +53,11 @@ impl Schema {
         let file = File::open(path.join(".schema")).expect("Schema file not found");
         let mut reader = io::BufReader::new(file).lines();
         let mut tables = HashMap::new();
-        let name = reader
+        let header = reader
             .next()
             .expect("Schema file is empty")
             .expect("Failed to read schema file");
+        let (name, kind) = header.split_once(':').expect("Schema file corrupted");
         for line in reader {
             let line = line.expect("Failed to read schema file");
             let (table, columns) = line.split_once('#').expect("Schema file corrupted");
@@ -43,13 +72,19 @@ impl Schema {
                     ));
             }
         }
-        Schema { tables, name }
+        let kind = match kind {
+            "dobby" => SchemaKind::Dobby,
+            "sqlite" => SchemaKind::Sqlite,
+            _ => panic!("Schema file corrupted"),
+        };
+        Schema { tables, name: name.into(), kind }
     }
 
     pub fn dump(&self, path: &Path) -> Result<(), io::Error> {
         log::info!("Dumping schema...");
         let mut file = File::create(path.join(".schema"))?;
         file.write_all(self.name.as_bytes())?;
+        file.write_all(format!(":{:?}", self.kind).to_lowercase().as_bytes())?;
         file.write_all(b"\n")?;
         for (table, columns) in &self.tables {
             let table_schema: String = columns

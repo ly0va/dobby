@@ -7,7 +7,7 @@ use crate::core::Database;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[allow(clippy::derive_partial_eq_without_eq)]
 pub mod proto {
@@ -69,7 +69,7 @@ impl From<DobbyError> for Status {
             DobbyError::InvalidDataType(_) => Status::invalid_argument(err.to_string()),
             DobbyError::IncompleteData(_, _) => Status::invalid_argument(err.to_string()),
             DobbyError::InvalidRange(_, _) => Status::invalid_argument(err.to_string()),
-            DobbyError::SqlError(_) => Status::internal(err.to_string()),
+            DobbyError::SqlError(_) => Status::invalid_argument(err.to_string()),
             DobbyError::IoError(_) => Status::internal(err.to_string()),
         }
     }

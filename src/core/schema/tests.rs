@@ -2,7 +2,11 @@ use super::*;
 
 #[test]
 fn create() -> Result<(), DobbyError> {
-    let mut schema = Schema::default();
+    let mut schema = Schema {
+        tables: HashMap::new(),
+        name: "".into(),
+        kind: SchemaKind::Dobby,
+    };
     let table_schema = vec![("column".into(), DataType::String)];
 
     schema.create_table("test_table".to_string(), table_schema.clone())?;
@@ -14,7 +18,11 @@ fn create() -> Result<(), DobbyError> {
 
 #[test]
 fn drop() -> Result<(), DobbyError> {
-    let mut schema = Schema::default();
+    let mut schema = Schema {
+        tables: HashMap::new(),
+        name: "".into(),
+        kind: SchemaKind::Dobby,
+    };
     let table_schema = vec![("column".into(), DataType::String)];
 
     schema.create_table("test_table".to_string(), table_schema)?;
@@ -26,7 +34,11 @@ fn drop() -> Result<(), DobbyError> {
 
 #[test]
 fn alter() -> Result<(), DobbyError> {
-    let mut schema = Schema::default();
+    let mut schema = Schema {
+        tables: HashMap::new(),
+        name: "".into(),
+        kind: SchemaKind::Dobby,
+    };
     let table_schema = vec![("column".into(), DataType::String)];
 
     schema.create_table("test_table".to_string(), table_schema)?;

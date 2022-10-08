@@ -40,13 +40,19 @@ async fn main() {
         panic!("No server specified");
     }
 
-    let db = {
+    let db = if options.sqlite {
+        let db = if let Some(name) = options.new {
+            Sqlite::create(options.path, name)
+        } else {
+            Sqlite::open(options.path)
+        };
+        Arc::new(Mutex::new(db)) as Arc<dyn Database>
+    } else {
         let db = if let Some(name) = options.new {
             Dobby::create(options.path, name)
         } else {
             Dobby::open(options.path)
         };
-        // TODO: maybe better to use one mutex per table instead of a global one?
         Arc::new(Mutex::new(db)) as Arc<dyn Database>
     };
 

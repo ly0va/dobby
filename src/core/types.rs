@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io;
 
+use rusqlite::types::ToSqlOutput;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -39,10 +40,10 @@ pub enum DobbyError {
     #[error("Invalid range: {0} > {1}")]
     InvalidRange(String, String),
 
-    #[error("IO Error")]
+    #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
 
-    #[error("SQL Error")]
+    #[error("SQL Error: {0}")]
     SqlError(#[from] rusqlite::Error),
 }
 
@@ -112,14 +113,14 @@ pub enum DataType {
 }
 
 impl rusqlite::ToSql for TypedValue {
-    fn to_sql(&self) -> Result<rusqlite::types::ToSqlOutput<'_>, rusqlite::Error> {
+    fn to_sql(&self) -> Result<ToSqlOutput<'_>, rusqlite::Error> {
         match self {
             TypedValue::Int(i) => i.to_sql(),
             TypedValue::Float(f) => f.to_sql(),
             TypedValue::String(s) => s.to_sql(),
-            _ => Err(rusqlite::Error::ToSqlConversionFailure(Box::new(
-                DobbyError::InvalidValue(self.clone(), DataType::Int),
-            ))),
+            TypedValue::Char(c) => Ok(ToSqlOutput::from(c.to_string())),
+            TypedValue::StringInvl(s1, s2) => Ok(ToSqlOutput::from(format!("{}..{}", s1, s2))),
+            TypedValue::CharInvl(c1, c2) => Ok(ToSqlOutput::from(format!("{}..{}", c1, c2))),
         }
     }
 }

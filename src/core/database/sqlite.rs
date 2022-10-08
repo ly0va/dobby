@@ -1,52 +1,115 @@
-use super::Database;
 use crate::core::schema::Schema;
 use crate::core::types::{ColumnSet, DataType, DobbyError, Query, TypedValue};
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 pub struct Sqlite {
-    pub db: rusqlite::Connection,
+    db: rusqlite::Connection,
+    path: PathBuf,
     pub schema: Schema,
+}
+
+impl Query {
+    fn sql_conditions(&self) -> String {
+        let conditions = match self {
+            Query::Select { conditions, .. } => conditions,
+            Query::Update { conditions, .. } => conditions,
+            Query::Delete { conditions, .. } => conditions,
+            _ => return String::new(),
+        };
+
+        if conditions.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "WHERE {}",
+                conditions
+                    .iter()
+                    .map(|(column, value)| format!("{} = {:?}", column, value))
+                    .collect::<Vec<_>>()
+                    .join(" AND ")
+            )
+        }
+    }
+
+    fn to_sql(&self) -> String {
+        match self {
+            Query::Select { columns, from, .. } => {
+                format!(
+                    "SELECT {} FROM {} {}",
+                    if columns.is_empty() {
+                        "*".into()
+                    } else {
+                        columns.join(", ")
+                    },
+                    from,
+                    self.sql_conditions()
+                )
+            }
+            Query::Insert { into, values } => format!(
+                "INSERT INTO {} ({}) VALUES ({})",
+                into,
+                values
+                    .keys()
+                    .map(|k| k.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                values.keys().map(|_| "?").collect::<Vec<_>>().join(", ")
+            ),
+            Query::Update { table, set, .. } => format!(
+                "UPDATE {} SET {} {}",
+                table,
+                set.iter()
+                    .map(|(column, value)| format!("{} = {:?}", column, value))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                self.sql_conditions()
+            ),
+            Query::Delete { from, .. } => format!("DELETE FROM {} {}", from, self.sql_conditions()),
+            Query::Drop { table } => format!("DROP TABLE {}", table),
+            Query::Create { table, columns } => format!(
+                "CREATE TABLE {} ({})",
+                table,
+                columns
+                    .iter()
+                    .map(|(name, data_type)| format!("{} {} NOT NULL", name, data_type.to_sql()))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Query::Alter { .. } => "".into(),
+        }
+    }
 }
 
 impl Sqlite {
     pub fn open(path: PathBuf) -> Self {
-        let db = Connection::open(&path).expect("Failed to open database");
-        Self { db: db.into(), schema: Schema::new("...".into()) }
+        log::info!("Opening SQLite database at {:?}", path);
+        let sqlite_path = path.join("db.sqlite");
+        if !path.is_dir() || !sqlite_path.exists() {
+            panic!("Database not found at {:?}", path);
+        }
+        let db = Connection::open(&sqlite_path).expect("Failed to open database");
+        let schema = Schema::load(&path);
+        assert!(schema.is_sqlite(), "Wrong schema type");
+        Self { db, schema, path }
     }
 
     pub fn create(path: PathBuf, name: String) -> Self {
-        let db = Connection::open(&path).expect("Failed to open database");
-        Self { db: db.into(), schema: Schema::new(name) }
+        log::info!("Creating SQLite database {} at {:?}", name, path);
+        if path.exists() {
+            panic!("Path {} already occupied", path.display());
+        }
+        std::fs::create_dir_all(&path).expect("Failed to create database directory");
+        let sqlite_path = path.join("db.sqlite");
+        let db = Connection::open(&sqlite_path).expect("Failed to open database");
+        Self { db, schema: Schema::new_sqlite(name), path }
     }
-}
 
-impl Sqlite {
     pub fn execute(&mut self, query: Query) -> Result<Vec<ColumnSet>, DobbyError> {
-        match query {
-            Query::Select { from, columns, conditions } => {
-                let conditions = if conditions.is_empty() {
-                    "".to_string()
-                } else {
-                    format!(
-                        "WHERE {}",
-                        conditions
-                            .iter()
-                            .map(|(column, value)| format!("{} = {:?}", column, value))
-                            .collect::<Vec<_>>()
-                            .join(" AND ")
-                    )
-                };
-
-                let mut stmt = self.db.prepare(&format!(
-                    "SELECT {} FROM {} {}",
-                    columns.join(", "),
-                    from,
-                    conditions
-                ))?;
-
+        match &query {
+            Query::Select { from, .. } => {
+                let mut stmt = self.db.prepare(&query.to_sql())?;
                 let columns: Vec<_> = stmt
                     .columns()
                     .iter()
@@ -63,7 +126,7 @@ impl Sqlite {
                     })
                     .collect();
 
-                let rows = stmt
+                let mut rows: Vec<ColumnSet> = stmt
                     .query_map([], |row| {
                         let mut result = HashMap::new();
                         for column in columns.iter() {
@@ -81,112 +144,76 @@ impl Sqlite {
                     })?
                     .collect::<Result<_, _>>()?;
 
-                // TODO: coerce the types to the correct ones
-                // FIXME i still have to maintain an extermal schema for this to work
-                // - fix alter, rename and create
+                for row in rows.iter_mut() {
+                    for (column, data_type) in self.schema.tables[from].iter() {
+                        if row.contains_key(column) {
+                            let value = row[column].clone();
+                            row.insert(column.clone(), value.coerce(*data_type)?);
+                        }
+                    }
+                }
                 // TODO add a RETURNING clause to delete, insert, update
                 Ok(rows)
             }
-            Query::Insert { into, values } => {
-                let mut stmt = self.db.prepare(&format!(
-                    "INSERT INTO {} ({}) VALUES ({})",
-                    into,
-                    values
-                        .keys()
-                        .map(|k| k.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                    values.keys().map(|_| "?").collect::<Vec<_>>().join(", ")
-                ))?;
-                // TODO: verify order is the same as of keys
+            Query::Insert { values, into } => {
+                let mut stmt = self.db.prepare(&query.to_sql())?;
+                for (column, data_type) in self.schema.tables[into].iter() {
+                    let value = values[column].clone();
+                    value.coerce(*data_type)?.validate()?;
+                }
                 let values: Vec<_> = values.values().map(|v| v as &dyn rusqlite::ToSql).collect();
                 stmt.execute(&values[..])?;
                 Ok(vec![])
             }
-            Query::Update { table, set: values, conditions } => {
-                let conditions = if conditions.is_empty() {
-                    "".to_string()
-                } else {
-                    format!(
-                        "WHERE {}",
-                        conditions
-                            .iter()
-                            .map(|(column, value)| format!("{} = {:?}", column, value))
-                            .collect::<Vec<_>>()
-                            .join(" AND ")
-                    )
-                };
-                let mut stmt = self.db.prepare(&format!(
-                    "UPDATE {} SET {} {}",
-                    table,
-                    values
-                        .iter()
-                        .map(|(column, value)| format!("{} = {:?}", column, value))
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                    conditions
-                ))?;
-
-                let values: Vec<_> = values.values().map(|v| v as &dyn rusqlite::ToSql).collect();
+            Query::Update { set, table, .. } => {
+                let mut stmt = self.db.prepare(&query.to_sql())?;
+                for (column, data_type) in self.schema.tables[table].iter() {
+                    if set.contains_key(column) {
+                        let value = set[column].clone();
+                        value.coerce(*data_type)?.validate()?;
+                    }
+                }
+                let values: Vec<_> = set.values().map(|v| v as &dyn rusqlite::ToSql).collect();
                 stmt.execute(&values[..])?;
                 Ok(vec![])
             }
-            Query::Delete { from, conditions } => {
-                let conditions = if conditions.is_empty() {
-                    "".to_string()
-                } else {
-                    format!(
-                        "WHERE {}",
-                        conditions
-                            .iter()
-                            .map(|(column, value)| format!("{} = {:?}", column, value))
-                            .collect::<Vec<_>>()
-                            .join(" AND ")
-                    )
-                };
-                let mut stmt = self
-                    .db
-                    .prepare(&format!("DELETE FROM {} {}", from, conditions))?;
+            Query::Delete { .. } => {
+                let mut stmt = self.db.prepare(&query.to_sql())?;
                 stmt.execute([])?;
                 Ok(vec![])
             }
             Query::Drop { table } => {
+                let mut stmt = self.db.prepare(&query.to_sql())?;
                 self.schema.drop_table(table.clone())?;
-                let mut stmt = self.db.prepare(&format!("DROP TABLE {}", table))?;
                 stmt.execute([])?;
                 Ok(vec![])
             }
             Query::Create { table, columns } => {
+                let mut stmt = self.db.prepare(&query.to_sql())?;
                 self.schema.create_table(table.clone(), columns.clone())?;
-                let mut stmt = self.db.prepare(&format!(
-                    "CREATE TABLE {} ({})",
-                    table,
-                    columns
-                        .iter()
-                        .map(|(name, data_type)| format!(
-                            "{} {} NOT NULL",
-                            name,
-                            data_type.to_sql()
-                        ))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ))?;
                 stmt.execute([])?;
                 Ok(vec![])
             }
             Query::Alter { table, rename } => {
                 self.schema.alter_table(table.clone(), rename.clone())?;
-                // TODO: do this in a transaction / batch
+                let tx = self.db.transaction()?;
                 for (old, new) in rename {
-                    let mut stmt = self.db.prepare(&format!(
+                    let mut stmt = tx.prepare(&format!(
                         "ALTER TABLE {} RENAME COLUMN {} TO {}",
                         table, old, new
                     ))?;
                     stmt.execute([])?;
                 }
+                tx.commit()?;
 
                 Ok(vec![])
             }
         }
+    }
+}
+
+impl Drop for Sqlite {
+    fn drop(&mut self) {
+        self.schema.dump(&self.path).expect("Failed to dump schema");
     }
 }
