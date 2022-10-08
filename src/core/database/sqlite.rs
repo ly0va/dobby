@@ -25,15 +25,15 @@ impl Query {
             format!(
                 "WHERE {}",
                 conditions
-                    .iter()
-                    .map(|(column, value)| format!("{} = {:?}", column, value))
+                    .keys()
+                    .map(|column| format!("{} = ?", column,))
                     .collect::<Vec<_>>()
                     .join(" AND ")
             )
         }
     }
 
-    fn to_sql(&self) -> String {
+    pub fn to_sql(&self) -> String {
         match self {
             Query::Select { columns, from, .. } => {
                 format!(
@@ -60,8 +60,8 @@ impl Query {
             Query::Update { table, set, .. } => format!(
                 "UPDATE {} SET {} {}",
                 table,
-                set.iter()
-                    .map(|(column, value)| format!("{} = {:?}", column, value))
+                set.keys()
+                    .map(|column| format!("{} = ?", column))
                     .collect::<Vec<_>>()
                     .join(", "),
                 self.sql_conditions()
@@ -108,7 +108,7 @@ impl Sqlite {
 
     pub fn execute(&mut self, query: Query) -> Result<Vec<ColumnSet>, DobbyError> {
         match &query {
-            Query::Select { from, .. } => {
+            Query::Select { from, conditions, .. } => {
                 let mut stmt = self.db.prepare(&query.to_sql())?;
                 let columns: Vec<_> = stmt
                     .columns()
@@ -126,8 +126,13 @@ impl Sqlite {
                     })
                     .collect();
 
+                let conditions: Vec<_> = conditions
+                    .values()
+                    .map(|v| v as &dyn rusqlite::ToSql)
+                    .collect();
+
                 let mut rows: Vec<ColumnSet> = stmt
-                    .query_map([], |row| {
+                    .query_map(&conditions[..], |row| {
                         let mut result = HashMap::new();
                         for column in columns.iter() {
                             let (name, data_type, index) = column;
@@ -165,7 +170,7 @@ impl Sqlite {
                 stmt.execute(&values[..])?;
                 Ok(vec![])
             }
-            Query::Update { set, table, .. } => {
+            Query::Update { set, table, conditions } => {
                 let mut stmt = self.db.prepare(&query.to_sql())?;
                 for (column, data_type) in self.schema.tables[table].iter() {
                     if set.contains_key(column) {
@@ -174,17 +179,26 @@ impl Sqlite {
                     }
                 }
                 let values: Vec<_> = set.values().map(|v| v as &dyn rusqlite::ToSql).collect();
-                stmt.execute(&values[..])?;
+                let conditions: Vec<_> = conditions
+                    .values()
+                    .map(|v| v as &dyn rusqlite::ToSql)
+                    .collect();
+                stmt.execute(&[values, conditions].concat()[..])?;
                 Ok(vec![])
             }
-            Query::Delete { .. } => {
+            Query::Delete { conditions, .. } => {
                 let mut stmt = self.db.prepare(&query.to_sql())?;
-                stmt.execute([])?;
+                let conditions: Vec<_> = conditions
+                    .values()
+                    .map(|v| v as &dyn rusqlite::ToSql)
+                    .collect();
+                stmt.execute(&conditions[..])?;
                 Ok(vec![])
             }
             Query::Drop { table } => {
                 let mut stmt = self.db.prepare(&query.to_sql())?;
                 self.schema.drop_table(table.clone())?;
+
                 stmt.execute([])?;
                 Ok(vec![])
             }
