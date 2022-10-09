@@ -1,4 +1,4 @@
-# Architechture
+# Architecture
 
 The design of `dobby` is modular:
 
