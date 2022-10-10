@@ -6,10 +6,16 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use once_cell::sync::Lazy;
 use warp::http::StatusCode;
 use warp::Filter;
 
 impl warp::reject::Reject for DobbyError {}
+
+static OPENAPI_SPEC: Lazy<serde_json::Value> = Lazy::new(|| {
+    let spec = include_str!("../openapi.yaml");
+    serde_yaml::from_str(spec).unwrap()
+});
 
 impl DobbyError {
     pub fn status_code(&self) -> StatusCode {
@@ -115,15 +121,10 @@ pub async fn serve(db_itself: Arc<dyn Database>, address: impl Into<SocketAddr>)
         .and(warp::path::end())
         .map(move || warp::reply::json(&db.schema()));
 
-    // TODO: docs, error responses
     let openapi = warp::get()
         .and(warp::path("openapi.json"))
         .and(warp::path::end())
-        .map(|| {
-            let spec: serde_json::Value = serde_json::from_str(include_str!("../openapi.json"))
-                .expect("Failed to parse OpenAPI spec");
-            warp::reply::json(&spec)
-        });
+        .map(|| warp::reply::json(&*OPENAPI_SPEC));
 
     let index = warp::get()
         .and(warp::path::end())

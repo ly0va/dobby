@@ -19,8 +19,8 @@ Try it out using `curl`:
 
 ```bash
 # fetch the schema
-$ curl http://dobby.lyova.xyz
-{"tables":{"cars":[["id","int"],["name","string"],["price","float"]]},"name":"test-db"}
+$ curl http://dobby.lyova.xyz/.schema
+{"tables":{"cars":{{"id":"int"},{"name":"string"},{"price":"float"}}},"name":"test-db","kind":"dobby"}
 
 # insert some cars
 $ curl -X POST -d '{"id":1,"name":"ferrari","price":123.456}' -H 'Content-Type: application/json' http://dobby.lyova.xyz/cars
@@ -30,3 +30,18 @@ $ curl -X POST -d '{"id":2,"name":"lambo","price":181.818}' -H 'Content-Type: ap
 $ curl http://dobby.lyova.xyz/cars?id=1
 [{"price":123.456,"id":1,"name":"ferrari"}]
 ```
+
+> **hint**: use `jq` tool to pretty-print JSONs in the command line
+
+## OpenAPI specification
+
+Machine-readable OpenAPI spec is hosted on `/openapi.json`, derived from [this](../openapi.yaml) `.yaml` file.
+
+Human-readable interactive documentation based on this spec is hosted on `/`: [check it out](http://dobby.lyova.xyz).
+
+Writing an OpenAPI spec has a number of advantages:
+
+- Code generation
+- Tooling for documentation, tests and mocks
+- Machine-readability
+- Stability

@@ -21,7 +21,7 @@
 - :gear: Filtering based on column values
 - :hammer_and_wrench: Creating and dropping tables
 - :pencil: Renaming columns
-- :envelope: A modern REST API
+- :envelope: A modern REST API with OpenAPI spec
 - :package: An even more modern gRPC API
 - :sparkles: A fancy CLI client
 - :ledger: Logging
