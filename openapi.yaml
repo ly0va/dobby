@@ -1,0 +1,220 @@
+openapi: 3.0.0
+info:
+  title: dobby API
+  description: |-
+    This is an OpenAPI specification for [`dobby`](https://github.com/ly0va/dobby)'s REST API
+  contact:
+    email: lyova.potyomkin@gmail.com
+  license:
+    name: 'License: MIT'
+    url: https://github.com/ly0va/dobby/blob/master/LICENSE
+  version: 0.1.0
+
+externalDocs:
+  description: Dobby documentation
+  url: https://github.com/ly0va/dobby
+
+servers:
+  - url: http://dobby.lyova.xyz
+  - url: http://do88y.herokuapp.com
+
+tags:
+  - name: table
+    description: Table operations
+  - name: schema
+    description: Altering database schema
+
+paths:
+  /{table}:
+    parameters:
+      - $ref: '#/components/parameters/Table'
+    get:
+      tags: [table]
+      summary: Read rows from a table
+      operationId: select
+      parameters:
+        - $ref: '#/components/parameters/Filter'
+      responses:
+        '200':
+          description: Successful query
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Row'
+    post:
+      tags: [table]
+      summary: Insert a row into a table
+      operationId: insert
+      requestBody:
+        $ref: '#/components/requestBodies/Row'
+      responses:
+        '201':
+          description: Successful insert
+    put:
+      tags: [table]
+      summary: Update rows in a table
+      parameters:
+        - $ref: '#/components/parameters/Filter'
+      requestBody:
+        $ref: '#/components/requestBodies/Row'
+      responses:
+        '200':
+          description: Successful update
+    delete:
+      tags: [table]
+      summary: Delete rows from a table
+      parameters:
+        - $ref: '#/components/parameters/Filter'
+      responses:
+        '200':
+          description: Successful deletion
+  
+  /:
+    get:
+      tags: [schema]
+      summary: Get the database schema
+      responses:
+        '200':
+          description: Successful query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Database'
+                
+  /{table}/create:
+    parameters:
+      - $ref: '#/components/parameters/Table'
+    post:
+      tags: [schema]
+      summary: Create a table
+      requestBody:
+        $ref: '#/components/requestBodies/Table'
+      responses:
+        '201':
+          description: Successful table creation
+          
+  /{table}/drop:
+    parameters:
+      - $ref: '#/components/parameters/Table'
+    delete:
+      tags: [schema]
+      summary: Drop a table
+      responses:
+        '200':
+          description: Successful table deletion
+          
+  /{table}/alter:
+    parameters:
+      - $ref: '#/components/parameters/Table'
+    put:
+      tags: [schema]
+      summary: Rename columns in a table
+      parameters:
+        - name: renamings
+          in: query
+          description: old/new colunm names
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+          example:
+            model: brand
+            price: money
+      responses:
+        '200':
+          description: Successful column renamings
+
+components:
+  schemas:
+    Table:
+      type: object
+      additionalProperties:
+        type: string
+        enum: [int, float, string, char, string_invl, char_invl]
+      example:
+        id: int
+        price: float
+        model: stirng
+        
+    Database:
+        type: object
+        properties:
+          name:
+            type: string
+            example: 'demo-db'
+          kind:
+            type: string
+            enum: [dobby, sqlite]
+          tables:
+            type: object
+            additionalProperties:
+              $ref: '#/components/schemas/Table'
+            example:
+              cars: 
+                id: int
+                price: float
+                model: string
+              users:
+                name: string
+                age: int
+                
+    Row:
+      type: object
+      additionalProperties:
+        anyOf:
+          - type: string
+          - type: number
+          - type: integer
+          - type: array
+            minItems: 2
+            maxItems: 2
+            items:
+              type: string
+      example:
+        id: 1
+        model: "Ferrari"
+        price: 181.818
+
+  parameters:
+    Table:
+      in: path
+      name: table
+      description: Name of the table to execute the operation on
+      required: true
+      schema:
+        type: string
+        example: 'cars'
+
+    Filter:
+      in: query
+      name: filter
+      required: false
+      schema:
+        type: object
+        additionalProperties:
+          anyOf:
+            - type: string
+            - type: number
+            - type: integer
+            - type: array
+              items: 
+                type: string
+      example:
+        id: 1
+        
+  requestBodies:
+    Row:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Row'
+    Table:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Table'
+
