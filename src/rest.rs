@@ -111,8 +111,22 @@ pub async fn serve(db_itself: Arc<dyn Database>, address: impl Into<SocketAddr>)
 
     let db = Arc::clone(&db_itself);
     let schema = warp::get()
+        .and(warp::path(".schema"))
         .and(warp::path::end())
         .map(move || warp::reply::json(&db.schema()));
+
+    let openapi = warp::get()
+        .and(warp::path("openapi.json"))
+        .and(warp::path::end())
+        .map(|| {
+            let spec: serde_json::Value = serde_json::from_str(include_str!("../openapi.json"))
+                .expect("Failed to parse OpenAPI spec");
+            warp::reply::json(&spec)
+        });
+
+    let index = warp::get()
+        .and(warp::path::end())
+        .map(|| warp::reply::html(include_str!("../static/index.html")));
 
     let routes = select
         .or(insert)
@@ -122,6 +136,8 @@ pub async fn serve(db_itself: Arc<dyn Database>, address: impl Into<SocketAddr>)
         .or(create)
         .or(alter)
         .or(schema)
+        .or(openapi)
+        .or(index)
         .with(warp::log("api::rest"))
         .recover(handle_rejection);
 
