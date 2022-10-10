@@ -115,6 +115,7 @@ pub async fn serve(db_itself: Arc<dyn Database>, address: impl Into<SocketAddr>)
         .and(warp::path::end())
         .map(move || warp::reply::json(&db.schema()));
 
+    // TODO: docs, error responses
     let openapi = warp::get()
         .and(warp::path("openapi.json"))
         .and(warp::path::end())

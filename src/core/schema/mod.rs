@@ -1,6 +1,7 @@
 use super::types::DataType;
 use super::types::DobbyError;
 
+use serde::Serialize;
 use std::collections::{hash_map::Entry, HashMap};
 use std::fs::File;
 use std::io::{self, BufRead, Write};
@@ -18,9 +19,23 @@ enum SchemaKind {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct Schema {
+    #[serde(serialize_with = "serialize_tables")]
     pub tables: HashMap<String, Vec<(String, DataType)>>,
     name: String,
     kind: SchemaKind,
+}
+
+fn serialize_tables<S: serde::Serializer>(
+    tables: &HashMap<String, Vec<(String, DataType)>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let tables: HashMap<String, HashMap<String, DataType>> = tables
+        .clone()
+        .into_iter()
+        .map(|(name, columns)| (name, columns.into_iter().collect()))
+        .collect();
+
+    tables.serialize(serializer)
 }
 
 impl Schema {

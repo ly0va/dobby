@@ -232,7 +232,7 @@
         "example": {
           "id": "int",
           "price": "float",
-          "model": "stirng"
+          "model": "string"
         }
       },
       "Database": {
