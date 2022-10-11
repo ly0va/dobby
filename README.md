@@ -34,7 +34,7 @@
 
 You can read about each module in the docs:
 
-- [Architechture](./docs/architecture.md)
+- [Architecture](./docs/architecture.md)
 - [Server](./docs/server.md)
 - [CLI client](./docs/cli.md)
 - [REST service](./docs/rest-api.md)

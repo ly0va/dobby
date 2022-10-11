@@ -23,12 +23,12 @@ $ curl http://dobby.lyova.xyz/.schema
 {"tables":{"cars":{{"id":"int"},{"name":"string"},{"price":"float"}}},"name":"test-db","kind":"dobby"}
 
 # insert some cars
-$ curl -X POST -d '{"id":1,"name":"ferrari","price":123.456}' -H 'Content-Type: application/json' http://dobby.lyova.xyz/cars
-$ curl -X POST -d '{"id":2,"name":"lambo","price":181.818}' -H 'Content-Type: application/json' http://dobby.lyova.xyz/cars
+$ curl -X POST -d '{"id":1,"name":"Ferrari","price":123.456}' -H 'Content-Type: application/json' http://dobby.lyova.xyz/cars
+$ curl -X POST -d '{"id":2,"name":"Lambo","price":181.818}' -H 'Content-Type: application/json' http://dobby.lyova.xyz/cars
 
 # select from cars the table
 $ curl http://dobby.lyova.xyz/cars?id=1
-[{"price":123.456,"id":1,"name":"ferrari"}]
+[{"price":123.456,"id":1,"name":"Ferrari"}]
 ```
 
 > **hint**: use `jq` tool to pretty-print JSONs in the command line

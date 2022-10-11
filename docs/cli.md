@@ -6,7 +6,7 @@ It uses the gRPC API to communicate with the server.
 ## Features
 
 - Configurable output format (`ascii`/`json`/`csv`/`html`)
-- Command hinting, highlighting and autocompletion
+- Command hinting, highlighting and auto-completion
 - History navigation
 - Pretty unicode tables
 
@@ -69,13 +69,13 @@ OPTIONS:
 ```
 db> create --table cars --columns id=int name=string price=float
 
-db> insert --table cars --values id=1 name=ferrari price=123.456
+db> insert --table cars --values id=1 name=Ferrari price=123.456
 
 db> select --table cars --columns name price --where id=1
 ┌─────────┬─────────┐
 │ name    │ price   │
 ├─────────┼─────────┤
-│ ferrari │ 123.456 │
+│ Ferrari │ 123.456 │
 └─────────┴─────────┘
 ```
 

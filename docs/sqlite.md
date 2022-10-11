@@ -7,7 +7,7 @@ SQLite's advantages:
 - Better performance
 - Portability
 - Reliability
-- Accessiblity
+- Accessibility
 
 Module implementation: [here](../src/core/database/sqlite.rs).
 
