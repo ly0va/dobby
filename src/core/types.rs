@@ -102,14 +102,13 @@ pub enum TypedValue {
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
-#[repr(i32)]
 pub enum DataType {
-    Int,
-    Float,
-    Char,
-    String,
-    CharInvl,
-    StringInvl,
+    Int = 0,
+    Float = 1,
+    Char = 2,
+    String = 3,
+    CharInvl = 4,
+    StringInvl = 5,
 }
 
 impl rusqlite::ToSql for TypedValue {

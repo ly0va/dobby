@@ -45,3 +45,27 @@ Writing an OpenAPI spec has a number of advantages:
 - Tooling for documentation, tests and mocks
 - Machine-readability
 - Stability
+
+## Client and server stubs generation
+
+Using [openapi-generator](https://openapi-generator.tech/) we can generate a client library for any supported language and framework.
+
+E.g. Running the following command from the repo root will generate a `typescript` client library:
+
+```
+docker run --rm -v $PWD:/local openapitools/openapi-generator-cli generate -i /local/openapi.yaml -g typescript -o /local/client
+```
+
+And running the following will generate a `python` server using `flask` framework:
+
+```
+docker run --rm -v $PWD:/local openapitools/openapi-generator-cli generate -i /local/openapi.yaml -g python-flask -o /local/server
+```
+
+Advantages of code generation:
+
+- Repeatability
+- Less error-prone
+- Time savings
+- No need fo refactoring
+

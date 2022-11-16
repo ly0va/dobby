@@ -24,6 +24,7 @@
 - :envelope: A modern REST API with OpenAPI spec
 - :package: An even more modern gRPC API
 - :sparkles: A fancy CLI client
+- :wrench: Client code generation
 - :ledger: Logging
 - :feather: Optional [SQLite](sqlite.org) back-end
 - :rocket: Try `dobby` on [Heroku](http://dobby.lyova.xyz)!
