@@ -23,8 +23,9 @@ jobs:
           args: --check
 
       - name: Lint
-        uses: actions-rs/clippy@master
+        uses: actions-rs/clippy-check@v1
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           args: --tests --benches -- -D warnings
 
       - name: Test
