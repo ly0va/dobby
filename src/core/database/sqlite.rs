@@ -102,7 +102,7 @@ impl Sqlite {
         }
         std::fs::create_dir_all(&path).expect("Failed to create database directory");
         let sqlite_path = path.join("db.sqlite");
-        let db = Connection::open(&sqlite_path).expect("Failed to open database");
+        let db = Connection::open(sqlite_path).expect("Failed to open database");
         Self { db, schema: Schema::new_sqlite(name), path }
     }
 

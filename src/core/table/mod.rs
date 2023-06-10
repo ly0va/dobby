@@ -28,7 +28,7 @@ impl Table {
         let mut deleted = [0];
         let mut offset;
         loop {
-            offset = self.file.seek(SeekFrom::Current(0)).unwrap();
+            offset = self.file.stream_position().unwrap();
             self.file.read_exact(&mut deleted).ok()?;
 
             for (column, data_type) in &self.columns {
