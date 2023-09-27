@@ -1,7 +1,7 @@
 use super::{command::Command, format::Format, helpers::DobbyHelper};
 
-use dobby::core::types::ColumnSet;
-use dobby::grpc::proto::database_client::DatabaseClient;
+use crate::core::types::ColumnSet;
+use crate::grpc::proto::database_client::DatabaseClient;
 
 use colored::Colorize;
 use prettytable::{csv, Row, Table as PrettyTable};

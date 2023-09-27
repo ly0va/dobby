@@ -1,7 +1,5 @@
-use cli::{format::Format, Repl};
+use dobby::cli::{format::Format, Repl};
 use structopt::StructOpt;
-
-mod cli;
 
 /// A database engine as poor as a house elf
 #[derive(Debug, StructOpt)]

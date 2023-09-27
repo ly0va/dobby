@@ -1,5 +1,5 @@
-use dobby::core::types::{DataType, TypedValue};
-use dobby::grpc::proto;
+use crate::core::types::{DataType, TypedValue};
+use crate::grpc::proto;
 use std::error::Error;
 use structopt::{clap::AppSettings, StructOpt};
 
