@@ -2,12 +2,9 @@ openapi: 3.0.0
 info:
   title: dobby API
   description: |-
-    This is an OpenAPI specification for [`dobby`](https://github.com/ly0va/dobby)'s REST API
-  contact:
-    email: lyova.potyomkin@gmail.com
+    This is an OpenAPI specification for `dobby`'s REST API
   license:
     name: 'License: MIT'
-    url: https://github.com/ly0va/dobby/blob/master/LICENSE
   version: 0.1.0
 
 externalDocs:
@@ -15,8 +12,7 @@ externalDocs:
   url: https://github.com/ly0va/dobby
 
 servers:
-  - url: http://dobby.lyova.xyz
-  - url: http://do88y.herokuapp.com
+  - url: http://0.0.0.0:8080
 
 tags:
   - name: table

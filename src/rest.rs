@@ -130,7 +130,8 @@ pub async fn serve(db_itself: Arc<dyn Database>, address: impl Into<SocketAddr>)
         .and(warp::path::end())
         .map(|| warp::reply::html(include_str!("../static/index.html")));
 
-    let routes = select
+    let routes = crate::graphql::graphql(Arc::clone(&db_itself))
+        .or(select)
         .or(insert)
         .or(update)
         .or(delete)
