@@ -1,9 +1,14 @@
 syntax = "proto3";
 package database;
 
-message StringInvl {
-    string s1 = 1;
-    string s2 = 2;
+message ComplexInt {
+    int64 re = 1;
+    int64 im = 2;
+}
+
+message ComplexFloat {
+    double re = 1;
+    double im = 2;
 }
 
 message TypedValue {
@@ -11,7 +16,8 @@ message TypedValue {
         int64 int = 1;
         double float = 2;
         string string = 3;
-        StringInvl string_invl = 4;
+        ComplexInt complex_int = 4;
+        ComplexFloat complex_float = 5;
     }
 }
 
@@ -53,8 +59,8 @@ message Create {
         FLOAT = 1;
         CHAR = 2;
         STRING = 3;
-        CHAR_INVL = 4;
-        STRING_INVL = 5;
+        COMPLEX_INT = 4;
+        COMPLEX_FLOAT = 5;
     }
     string table = 1;
     map<string, Type> columns = 2;

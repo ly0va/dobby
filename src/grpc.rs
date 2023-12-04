@@ -150,7 +150,12 @@ impl From<typed_value::Data> for TypedValue {
             typed_value::Data::Int(i) => TypedValue::Int(i),
             typed_value::Data::Float(f) => TypedValue::Float(f),
             typed_value::Data::String(s) => TypedValue::String(s),
-            typed_value::Data::StringInvl(i) => TypedValue::StringInvl(i.s1, i.s2),
+            typed_value::Data::ComplexInt(proto::ComplexInt { re, im }) => {
+                TypedValue::ComplexInt(re, im)
+            }
+            typed_value::Data::ComplexFloat(proto::ComplexFloat { re, im }) => {
+                TypedValue::ComplexFloat(re, im)
+            }
         }
     }
 }
@@ -164,14 +169,14 @@ impl From<TypedValue> for proto::TypedValue {
                 proto::TypedValue { data: Some(typed_value::Data::String(c.to_string())) }
             }
             TypedValue::String(s) => proto::TypedValue { data: Some(typed_value::Data::String(s)) },
-            TypedValue::CharInvl(c1, c2) => proto::TypedValue {
-                data: Some(typed_value::Data::StringInvl(proto::StringInvl {
-                    s1: c1.to_string(),
-                    s2: c2.to_string(),
-                })),
+            TypedValue::ComplexInt(re, im) => proto::TypedValue {
+                data: Some(typed_value::Data::ComplexInt(proto::ComplexInt { re, im })),
             },
-            TypedValue::StringInvl(s1, s2) => proto::TypedValue {
-                data: Some(typed_value::Data::StringInvl(proto::StringInvl { s1, s2 })),
+            TypedValue::ComplexFloat(re, im) => proto::TypedValue {
+                data: Some(typed_value::Data::ComplexFloat(proto::ComplexFloat {
+                    re,
+                    im,
+                })),
             },
         }
     }

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io;
 
+use num::complex::Complex;
 use rusqlite::types::ToSqlOutput;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -96,8 +97,8 @@ pub enum TypedValue {
     Float(f64),
     Char(char),
     String(String),
-    CharInvl(char, char),
-    StringInvl(String, String),
+    ComplexInt(i64, i64),
+    ComplexFloat(f64, f64),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
@@ -107,8 +108,8 @@ pub enum DataType {
     Float = 1,
     Char = 2,
     String = 3,
-    CharInvl = 4,
-    StringInvl = 5,
+    ComplexInt = 4,
+    ComplexFloat = 5,
 }
 
 impl rusqlite::ToSql for TypedValue {
@@ -118,27 +119,16 @@ impl rusqlite::ToSql for TypedValue {
             TypedValue::Float(f) => f.to_sql(),
             TypedValue::String(s) => s.to_sql(),
             TypedValue::Char(c) => Ok(ToSqlOutput::from(c.to_string())),
-            TypedValue::StringInvl(s1, s2) => Ok(ToSqlOutput::from(format!("{}..{}", s1, s2))),
-            TypedValue::CharInvl(c1, c2) => Ok(ToSqlOutput::from(format!("{}..{}", c1, c2))),
+            TypedValue::ComplexInt(r, i) => Ok(ToSqlOutput::from(Complex::new(*r, *i).to_string())),
+            TypedValue::ComplexFloat(r, i) => {
+                Ok(ToSqlOutput::from(Complex::new(*r, *i).to_string()))
+            }
         }
     }
 }
 
 impl TypedValue {
     pub fn validate(&self) -> Result<(), DobbyError> {
-        match self {
-            TypedValue::CharInvl(c1, c2) => {
-                if c1 > c2 {
-                    return Err(DobbyError::InvalidRange(c1.to_string(), c2.to_string()));
-                }
-            }
-            TypedValue::StringInvl(s1, s2) => {
-                if s1 > s2 {
-                    return Err(DobbyError::InvalidRange(s1.to_string(), s2.to_string()));
-                }
-            }
-            _ => {}
-        }
         Ok(())
     }
 
@@ -148,8 +138,8 @@ impl TypedValue {
             TypedValue::Float(_) => DataType::Float,
             TypedValue::Char(_) => DataType::Char,
             TypedValue::String(_) => DataType::String,
-            TypedValue::CharInvl(_, _) => DataType::CharInvl,
-            TypedValue::StringInvl(_, _) => DataType::StringInvl,
+            TypedValue::ComplexInt(_, _) => DataType::ComplexInt,
+            TypedValue::ComplexFloat(_, _) => DataType::ComplexFloat,
         }
     }
 
@@ -181,11 +171,21 @@ impl TypedValue {
                 Ok(char::from(buf[0]).into())
             }
             DataType::String => Ok(TypedValue::String(read_string()?)),
-            DataType::StringInvl => Ok(TypedValue::StringInvl(read_string()?, read_string()?)),
-            DataType::CharInvl => {
-                let mut buf = [0; 2];
+            DataType::ComplexInt => {
+                let mut buf = [0; 8];
                 reader.read_exact(&mut buf)?;
-                Ok(TypedValue::CharInvl(char::from(buf[0]), char::from(buf[1])))
+                let r = i64::from_le_bytes(buf);
+                reader.read_exact(&mut buf)?;
+                let i = i64::from_le_bytes(buf);
+                Ok(TypedValue::ComplexInt(r, i))
+            }
+            DataType::ComplexFloat => {
+                let mut buf = [0; 8];
+                reader.read_exact(&mut buf)?;
+                let r = f64::from_le_bytes(buf);
+                reader.read_exact(&mut buf)?;
+                let i = f64::from_le_bytes(buf);
+                Ok(TypedValue::ComplexFloat(r, i))
             }
         }
     }
@@ -202,8 +202,12 @@ impl TypedValue {
             TypedValue::Float(f) => f.to_le_bytes().to_vec(),
             TypedValue::Char(c) => vec![c as u8],
             TypedValue::String(s) => convert_string(s),
-            TypedValue::CharInvl(c1, c2) => vec![c1 as u8, c2 as u8],
-            TypedValue::StringInvl(s1, s2) => [convert_string(s1), convert_string(s2)].concat(),
+            TypedValue::ComplexInt(r, i) => {
+                [r.to_le_bytes().to_vec(), i.to_le_bytes().to_vec()].concat()
+            }
+            TypedValue::ComplexFloat(r, i) => {
+                [r.to_le_bytes().to_vec(), i.to_le_bytes().to_vec()].concat()
+            }
         }
     }
 
@@ -230,23 +234,14 @@ impl TypedValue {
                 .parse::<f64>()
                 .map(TypedValue::Float)
                 .map_err(|_| DobbyError::InvalidValue(self, to)),
-            (TypedValue::String(s), DataType::StringInvl) => {
-                if let Some((s1, s2)) = s.split_once("..") {
-                    Ok(TypedValue::StringInvl(s1.to_string(), s2.to_string()))
-                } else {
-                    Err(DobbyError::InvalidValue(self, to))
-                }
-            }
-            (TypedValue::String(s), DataType::CharInvl) => {
-                if let Some((s1, s2)) = s.split_once("..") {
-                    Ok(TypedValue::CharInvl(
-                        string_to_char(s1)?,
-                        string_to_char(s2)?,
-                    ))
-                } else {
-                    Err(DobbyError::InvalidValue(self, to))
-                }
-            }
+            (TypedValue::String(s), DataType::ComplexInt) => s
+                .parse::<Complex<i64>>()
+                .map(|c| TypedValue::ComplexInt(c.re, c.im))
+                .map_err(|_| DobbyError::InvalidValue(self, to)),
+            (TypedValue::String(s), DataType::ComplexFloat) => s
+                .parse::<Complex<f64>>()
+                .map(|c| TypedValue::ComplexFloat(c.re, c.im))
+                .map_err(|_| DobbyError::InvalidValue(self, to)),
 
             (TypedValue::Char(c), DataType::String) => Ok(TypedValue::String(c.to_string())),
             (TypedValue::Char(c), DataType::Int) => c
@@ -259,12 +254,21 @@ impl TypedValue {
                 .parse::<f64>()
                 .map(TypedValue::Float)
                 .map_err(|_| DobbyError::InvalidValue(self, to)),
+            (TypedValue::Char(c), DataType::ComplexInt) => c
+                .to_string()
+                .parse::<Complex<i64>>()
+                .map(|c| TypedValue::ComplexInt(c.re, c.im))
+                .map_err(|_| DobbyError::InvalidValue(self, to)),
+            (TypedValue::Char(c), DataType::ComplexFloat) => c
+                .to_string()
+                .parse::<Complex<f64>>()
+                .map(|c| TypedValue::ComplexFloat(c.re, c.im))
+                .map_err(|_| DobbyError::InvalidValue(self, to)),
 
             (TypedValue::Int(i), DataType::Float) => Ok(TypedValue::Float(*i as f64)),
-            (TypedValue::StringInvl(s1, s2), DataType::CharInvl) => Ok(TypedValue::CharInvl(
-                string_to_char(s1)?,
-                string_to_char(s2)?,
-            )),
+            (TypedValue::ComplexInt(r, i), DataType::ComplexFloat) => {
+                Ok(TypedValue::ComplexFloat(*r as f64, *i as f64))
+            }
             (v, _) => Err(DobbyError::InvalidValue(v.clone(), to)),
         }
     }
@@ -307,8 +311,8 @@ impl ToString for TypedValue {
             TypedValue::Float(f) => f.to_string(),
             TypedValue::Char(c) => c.to_string(),
             TypedValue::String(s) => s.to_string(),
-            TypedValue::CharInvl(c1, c2) => format!("{}..{}", c1, c2),
-            TypedValue::StringInvl(s1, s2) => format!("{}..{}", s1, s2),
+            TypedValue::ComplexInt(r, i) => Complex::new(*r, *i).to_string(),
+            TypedValue::ComplexFloat(r, i) => Complex::new(*r, *i).to_string(),
         }
     }
 }
@@ -320,8 +324,8 @@ impl fmt::Debug for DataType {
             DataType::Float => write!(f, "float"),
             DataType::Char => write!(f, "char"),
             DataType::String => write!(f, "string"),
-            DataType::CharInvl => write!(f, "char_invl"),
-            DataType::StringInvl => write!(f, "string_invl"),
+            DataType::ComplexInt => write!(f, "complex_int"),
+            DataType::ComplexFloat => write!(f, "complex_float"),
         }
     }
 }
@@ -335,8 +339,8 @@ impl TryFrom<&str> for DataType {
             "float" => Ok(DataType::Float),
             "char" => Ok(DataType::Char),
             "string" => Ok(DataType::String),
-            "char_invl" => Ok(DataType::CharInvl),
-            "string_invl" => Ok(DataType::StringInvl),
+            "complex_int" => Ok(DataType::ComplexInt),
+            "complex_float" => Ok(DataType::ComplexFloat),
             _ => Err(DobbyError::InvalidDataType(s.to_string())),
         }
     }
@@ -349,8 +353,8 @@ impl From<i32> for DataType {
             1 => DataType::Float,
             2 => DataType::Char,
             3 => DataType::String,
-            4 => DataType::CharInvl,
-            5 => DataType::StringInvl,
+            4 => DataType::ComplexInt,
+            5 => DataType::ComplexFloat,
             _ => unreachable!("Invalid data type"),
         }
     }
